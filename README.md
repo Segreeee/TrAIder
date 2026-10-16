@@ -46,6 +46,13 @@ TrAIder/
      non è già loggato manualmente.
    - Lascia `DRY_RUN=true` per i primi test: l'executor stampera' l'ordine
      simulato invece di inviarlo a MT5.
+   - Analisti locali (opzionali, default gia' impostati): `OLLAMA_MODEL_TECHNICAL`
+     (`deepseek-coder-v2:16b`) e `OLLAMA_MODEL_MACRO` (`gemma3:12b`). Emettono
+     un verdetto ciascuno e Qwen arbitra (LLM-as-a-judge); se Ollama non
+     risponde si ricade su Qwen da solo. Consigliato avviare Ollama con
+     `OLLAMA_KEEP_ALIVE=30m` (o `-1`): il primo caricamento a freddo di un
+     modello puo' richiedere alcuni minuti. Evita modelli "thinking"
+     (es. `deepseek-r1`): troppo lenti senza GPU capiente.
 
 3. Avvia il demone headless (loop automatico, esegue/simula ordini):
    ```

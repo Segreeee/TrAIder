@@ -7,6 +7,7 @@ eccezioni piu' comuni (timeout, rate limit, JSON malformato, campi mancanti).
 """
 import json
 import logging
+import re
 from typing import Optional, TypedDict
 
 from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
@@ -42,26 +43,39 @@ class QwenBrainError(Exception):
 
 
 class QwenBrain:
-    """Wrapper attorno al client OpenAI-compatible puntato al provider Qwen."""
+    """
+    Wrapper attorno a un client OpenAI-compatible. Senza argomenti punta al
+    provider Qwen (da settings); passando base_url/model/api_key puo' puntare a
+    qualunque altro endpoint compatibile (es. Ollama locale per gli analisti).
+    """
 
-    def __init__(self):
-        if not settings.qwen_api_key:
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        model: Optional[str] = None,
+        timeout: Optional[float] = None,
+        max_retries: Optional[int] = None,
+    ):
+        api_key = api_key if api_key is not None else settings.qwen_api_key
+        if not api_key:
             logger.warning(
                 "QWEN_API_KEY non impostata: le chiamate al modello falliranno finche' "
                 "non viene configurata la variabile d'ambiente."
             )
+        self._model = model or settings.qwen_model
         self._client = OpenAI(
-            api_key=settings.qwen_api_key or "missing-key",
-            base_url=settings.qwen_base_url,
-            timeout=settings.llm_timeout_seconds,
-            max_retries=settings.llm_max_retries,
+            api_key=api_key or "missing-key",
+            base_url=base_url or settings.qwen_base_url,
+            timeout=timeout if timeout is not None else settings.llm_timeout_seconds,
+            max_retries=max_retries if max_retries is not None else settings.llm_max_retries,
         )
 
     def _chat_completion(self, system_prompt: str, user_prompt: str, temperature: float, json_mode: bool) -> str:
         """Esegue la chiamata API grezza e ne isola la gestione delle eccezioni; ritorna il contenuto testuale."""
         try:
             response = self._client.chat.completions.create(
-                model=settings.qwen_model,
+                model=self._model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
@@ -118,6 +132,9 @@ class QwenBrain:
     def _parse_and_validate(raw_content: Optional[str]) -> TradeSignal:
         if not raw_content:
             raise QwenBrainError("Risposta vuota da Qwen.")
+
+        # Modelli "reasoning" locali (deepseek-r1) possono anteporre <think>...</think> al JSON.
+        raw_content = re.sub(r"<think>.*?</think>", "", raw_content, flags=re.DOTALL).strip()
 
         try:
             data = json.loads(raw_content)

@@ -214,10 +214,18 @@ def build_manager_prompt(
         for name, sig in persona_signals.items()
     )
 
+    missing_note = ""
+    if len(persona_signals) < 2:
+        missing_note = (
+            f"\n(ATTENZIONE: solo {len(persona_signals)} analista su 2 e' disponibile. Senza un "
+            "secondo parere indipendente preferisci HOLD salvo evidenza molto forte nei dati.)"
+        )
+
     return (
         base
         + "\n\n### VERDETTI INDIPENDENTI DEGLI ANALISTI DEL DESK\n"
         + personas_block
+        + missing_note
         + "\n\n### RICHIESTA FINALE (sostituisce la richiesta precedente)\n"
         "Tenendo conto di entrambi i verdetti sopra e delle regole di arbitraggio definite nel "
         "system prompt, emetti ORA il verdetto finale nel formato JSON obbligatorio."

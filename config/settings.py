@@ -29,6 +29,12 @@ class Settings:
     llm_timeout_seconds: float = float(os.getenv("LLM_TIMEOUT_SECONDS", "30"))
     llm_max_retries: int = int(os.getenv("LLM_MAX_RETRIES", "2"))
 
+    # --- Analisti locali (Ollama, endpoint OpenAI-compatible) ---
+    ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+    ollama_model_technical: str = os.getenv("OLLAMA_MODEL_TECHNICAL", "deepseek-coder-v2:16b")
+    ollama_model_macro: str = os.getenv("OLLAMA_MODEL_MACRO", "gemma3:12b")
+    ollama_timeout_seconds: float = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "600"))
+
     # --- MetaTrader5 ---
     mt5_login: str = os.getenv("MT5_LOGIN", "")
     mt5_password: str = os.getenv("MT5_PASSWORD", "")
