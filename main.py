@@ -6,8 +6,8 @@ Ciclo operativo:
    e del trend sul timeframe superiore.
 2. Recupero notizie (mock).
 3. Costruzione prompt (fase 1, senza analisi preliminare).
-4. Due analisti locali (Ollama) emettono un verdetto indipendente; Qwen (giudice)
-   decide. Fallback: Qwen in due fasi (analisi libera + verdetto JSON).
+4. Due analisti locali (Ollama) emettono un verdetto indipendente; un terzo
+   modello locale (giudice) decide. Fallback: giudice da solo in due fasi.
 5. Validazione/ricalcolo del lot_size via RiskManager.
 6. Esecuzione (o simulazione) dell'ordine.
 7. Attesa fino al ciclo successivo.
@@ -21,9 +21,9 @@ from logging.handlers import RotatingFileHandler
 
 from config.settings import settings
 from core.data_feed import DataFeedError, MarketDataFeed
-from core.ensemble import build_analysts, collect_persona_signals, judge_signal
+from core.ensemble import build_analysts, build_judge, collect_persona_signals, judge_signal
 from core.executor import ExecutorError, OrderExecutor
-from core.news_feed import MockNewsFeed
+from core.news_feed import YahooNewsFeed
 from core.prompt_builder import build_user_prompt
 from core.qwen_brain import QwenBrain, QwenBrainError
 from core.risk_manager import (
@@ -57,7 +57,7 @@ logger = setup_logging()
 
 def run_trading_cycle(
     data_feed: MarketDataFeed,
-    news_feed: MockNewsFeed,
+    news_feed: YahooNewsFeed,
     brain: QwenBrain,
     analysts: dict,
     executor: OrderExecutor,
@@ -85,8 +85,8 @@ def run_trading_cycle(
     )
 
     # 4. LLM-as-a-judge: gli analisti locali (Ollama) emettono un verdetto
-    # indipendente, Qwen arbitra. Se nessun analista risponde, ricade sul flusso
-    # Qwen-only a due fasi (analisi libera + verdetto strutturato).
+    # indipendente, il giudice arbitra. Se nessun analista risponde, ricade sul
+    # flusso single-model a due fasi (analisi libera + verdetto strutturato).
     persona_signals = collect_persona_signals(base_prompt, analysts)
     if persona_signals:
         for name, sig in persona_signals.items():
@@ -96,7 +96,7 @@ def run_trading_cycle(
             news_items=news_items, htf_trend=htf_trend,
         )
     else:
-        logger.warning("Nessun analista locale disponibile: uso il flusso Qwen-only.")
+        logger.warning("Nessun analista locale disponibile: uso il flusso single-model.")
         analysis = brain.run_reasoning_pass(base_prompt)
         decision_prompt = build_user_prompt(
             symbol=settings.symbol,
@@ -109,7 +109,7 @@ def run_trading_cycle(
             preliminary_analysis=analysis,
         )
         signal = brain.get_trade_signal(decision_prompt)
-    logger.info("Segnale ricevuto da Qwen: %s", signal)
+    logger.info("Segnale finale: %s", signal)
 
     # 5. Risk management: il rapporto rischio/rendimento viene ricalcolato (non
     # ci si fida del valore dichiarato da Qwen nel campo reasoning) e il trade
@@ -152,8 +152,8 @@ def main() -> None:
     logger.info("Avvio TrAIder MVP | symbol=%s timeframe=%s dry_run=%s", settings.symbol, settings.timeframe, settings.dry_run)
 
     data_feed = MarketDataFeed()
-    news_feed = MockNewsFeed()
-    brain = QwenBrain()
+    news_feed = YahooNewsFeed()
+    brain = build_judge()
     analysts = build_analysts()
     executor = OrderExecutor(dry_run=settings.dry_run)
 

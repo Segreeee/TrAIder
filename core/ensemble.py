@@ -1,10 +1,10 @@
 """
 Ensemble "LLM-as-a-judge": due analisti locali (Ollama) emettono ciascuno un
-verdetto indipendente, Qwen (API) arbitra e decide. Costo a pagamento: una
-sola chiamata (il giudice).
+verdetto indipendente, un terzo modello locale (il giudice) arbitra e decide.
+Nessun costo API.
 
 Se un analista non risponde, il giudice decide con quello rimasto; se non
-risponde nessuno, il chiamante ricade sul flusso Qwen-only (vedi
+risponde nessuno, il chiamante ricade sul flusso single-model (vedi
 `collect_persona_signals`: dict vuoto).
 """
 import logging
@@ -25,18 +25,24 @@ TECHNICAL_LABEL = "Analista Tecnico"
 MACRO_LABEL = "Analista Macro/Sentiment"
 
 
+def _local(model: str) -> QwenBrain:
+    """Client verso un modello Ollama. Nessun retry: se e' giu', fallisce subito."""
+    return QwenBrain(
+        api_key="ollama", base_url=settings.ollama_base_url, model=model,
+        timeout=settings.ollama_timeout_seconds, max_retries=0,
+    )
+
+
+def build_judge() -> QwenBrain:
+    """Il "cervello" principale: giudice dell'ensemble e fallback single-model (modello locale OLLAMA_MODEL_JUDGE)."""
+    return _local(settings.ollama_model_judge)
+
+
 def build_analysts() -> dict:
-    """{etichetta: (brain, system_prompt)}: un modello Ollama per persona. Nessun retry: se e' giu', fallisce subito."""
-
-    def local(model: str) -> QwenBrain:
-        return QwenBrain(
-            api_key="ollama", base_url=settings.ollama_base_url, model=model,
-            timeout=settings.ollama_timeout_seconds, max_retries=0,
-        )
-
+    """{etichetta: (brain, system_prompt)}: un modello Ollama per persona."""
     return {
-        TECHNICAL_LABEL: (local(settings.ollama_model_technical), TECHNICAL_PERSONA_SYSTEM_PROMPT),
-        MACRO_LABEL: (local(settings.ollama_model_macro), MACRO_PERSONA_SYSTEM_PROMPT),
+        TECHNICAL_LABEL: (_local(settings.ollama_model_technical), TECHNICAL_PERSONA_SYSTEM_PROMPT),
+        MACRO_LABEL: (_local(settings.ollama_model_macro), MACRO_PERSONA_SYSTEM_PROMPT),
     }
 
 
@@ -59,7 +65,7 @@ def judge_signal(
     news_items: list,
     htf_trend: Optional[dict],
 ) -> TradeSignal:
-    """Verdetto finale del giudice (Qwen) dati i verdetti degli analisti."""
+    """Verdetto finale del giudice dati i verdetti degli analisti."""
     prompt = build_manager_prompt(
         symbol=symbol, timeframe=settings.timeframe, market_payload=market_payload,
         news_items=news_items, account_balance=settings.account_balance,

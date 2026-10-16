@@ -23,8 +23,8 @@ from config.settings import settings
 from core.backtester import simulate_outcome
 from core.confidence import confidence_breakdown
 from core.data_feed import DataFeedError, MarketDataFeed
-from core.news_feed import MockNewsFeed
-from core.ensemble import build_analysts, collect_persona_signals, judge_signal
+from core.news_feed import YahooNewsFeed
+from core.ensemble import build_analysts, build_judge, collect_persona_signals, judge_signal
 from core.prompt_builder import build_user_prompt
 from core.qwen_brain import QwenBrain, QwenBrainError
 from core.risk_manager import (
@@ -80,7 +80,7 @@ def save_history(history: list) -> None:
     HISTORY_FILE.write_text(json.dumps(history[-200:], indent=2), encoding="utf-8")
 
 
-def prepare_symbol_context(feed: MarketDataFeed, news_feed: MockNewsFeed, symbol: str) -> dict:
+def prepare_symbol_context(feed: MarketDataFeed, news_feed: YahooNewsFeed, symbol: str) -> dict:
     """Recupera dati/indicatori/notizie e costruisce il prompt base per un simbolo — nessuna chiamata LLM."""
     raw_df = feed.fetch_ohlcv(symbol=symbol)
     enriched_df = feed.add_indicators(raw_df)
@@ -163,9 +163,9 @@ def decide(ctx: dict, brain: QwenBrain, two_phase: bool) -> dict:
 def decide_ensemble(ctx: dict, brain: QwenBrain, analysts: dict) -> dict:
     """
     Deep-dive "ensemble" (LLM-as-a-judge): due analisti locali (Ollama: tecnico,
-    macro/news) emettono un verdetto indipendente sullo stesso asset; Qwen
-    (`brain`, a pagamento) arbitra e decide. Se nessun analista risponde, ricade
-    sul flusso a due fasi Qwen-only.
+    macro/news) emettono un verdetto indipendente sullo stesso asset; il giudice
+    (`brain`, terzo modello locale) arbitra e decide. Se nessun analista risponde,
+    ricade sul flusso a due fasi single-model.
 
     La confidenza NON e' presa dal self-report del modello: viene ricalcolata
     con `confidence_breakdown` (accordo tra gli analisti + confluenza tecnica
@@ -222,13 +222,13 @@ def run_multi_asset_analysis(progress_callback=None, deep_dive_top_n: int = 2) -
        a due fasi. Gli altri mantengono il verdetto di screening.
 
     Con N asset e top_n candidati: N + 3*top_n chiamate — screening a 1 sola
-    chiamata per tutti, ensemble (2 analisti Ollama + giudice Qwen) solo dove conta di piu'.
+    chiamata per tutti, ensemble (2 analisti + giudice, locali) solo dove conta di piu'.
     """
     feed = MarketDataFeed()
     feed.connect()
-    brain = QwenBrain()
+    brain = build_judge()
     analysts = build_analysts()
-    news_feed = MockNewsFeed()
+    news_feed = YahooNewsFeed()
 
     total_steps = len(settings.symbols) + deep_dive_top_n
     step = 0
@@ -383,7 +383,7 @@ def render_signal(symbol: str, signal: dict) -> None:
 def render_context(r: dict) -> None:
     """Mostra profondita' dell'analisi, trend HTF, ensemble (personas + breakdown confidenza) o analisi preliminare."""
     if r.get("ensemble"):
-        st.caption("🧑‍🤝‍🧑 Analisi ensemble (analisti locali Ollama + Qwen giudice)")
+        st.caption("🧑‍🤝‍🧑 Analisi ensemble (2 analisti + giudice, locali)")
     elif r.get("two_phase"):
         st.caption("🔬 Analisi approfondita (ragionamento a due fasi)")
     elif r.get("two_phase") is False:
@@ -539,7 +539,7 @@ def summarize_live_outcomes(history: list) -> dict:
 
 
 def main() -> None:
-    st.title("📈 TrAIder — AI Trading Agent (Qwen)")
+    st.title("📈 TrAIder — AI Trading Agent")
 
     t1, t2, t3, t4 = st.columns(4)
     render_stat_tile(t1, "Asset monitorati", str(len(settings.symbols)))
@@ -560,13 +560,13 @@ def main() -> None:
         st.session_state.history = load_history()
 
     deep_dive_top_n = st.slider(
-        "Analisi ensemble (2 analisti locali Ollama + Qwen giudice) sui migliori N candidati — gli altri restano allo screening rapido (1 chiamata Qwen)",
+        "Analisi ensemble (2 analisti + giudice, tutti locali Ollama) sui migliori N candidati — gli altri restano allo screening rapido (1 chiamata)",
         min_value=0, max_value=len(settings.symbols), value=min(2, len(settings.symbols)),
     )
-    paid_calls = len(settings.symbols) + deep_dive_top_n
+    est_calls = len(settings.symbols) + 3 * deep_dive_top_n
     st.caption(
-        f"Stima chiamate per questa analisi: ~{paid_calls} a Qwen (a pagamento: 1 per lo screening di "
-        f"ogni asset + 1 giudice per candidato) e {2 * deep_dive_top_n} ai modelli locali Ollama (gratuite)."
+        f"Stima chiamate ai modelli locali Ollama (gratuite): ~{est_calls} "
+        f"(1 a testa per lo screening + 2 analisti e 1 giudice per ogni candidato approfondito)."
     )
 
     if st.button("🔍 Analizza tutti gli asset", type="primary"):

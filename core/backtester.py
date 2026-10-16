@@ -23,7 +23,7 @@ import pandas as pd
 
 from core.data_feed import MarketDataFeed
 from core.prompt_builder import build_user_prompt
-from core.qwen_brain import QwenBrain
+from core.ensemble import build_judge
 from core.risk_manager import (
     RiskManager,
     compute_risk_reward_ratio,
@@ -110,7 +110,7 @@ def run_backtest(
             f"{WARMUP_CANDLES + 1} candele per superare il periodo di warm-up degli indicatori."
         )
 
-    brain = QwenBrain()
+    brain = build_judge()
     risk_manager = RiskManager(account_balance, risk_per_trade_pct)
     pip_size = pip_size_for_symbol(symbol)
 
