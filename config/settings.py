@@ -1,0 +1,53 @@
+"""
+Configurazione centralizzata dell'MVP.
+Tutti i parametri sensibili/ambientali vengono letti da variabili d'ambiente
+(caricate da un file .env in fase di sviluppo) cosi' da non hardcodare
+credenziali nel codice sorgente.
+"""
+import os
+from dataclasses import dataclass
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+def _get_bool(name: str, default: bool) -> bool:
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return val.strip().lower() in ("1", "true", "yes", "on")
+
+
+@dataclass(frozen=True)
+class Settings:
+    # --- LLM (Qwen via endpoint OpenAI-compatible) ---
+    qwen_api_key: str = os.getenv("QWEN_API_KEY", "")
+    qwen_base_url: str = os.getenv(
+        "QWEN_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+    )
+    qwen_model: str = os.getenv("QWEN_MODEL", "qwen-plus")
+    llm_timeout_seconds: float = float(os.getenv("LLM_TIMEOUT_SECONDS", "30"))
+    llm_max_retries: int = int(os.getenv("LLM_MAX_RETRIES", "2"))
+
+    # --- MetaTrader5 ---
+    mt5_login: str = os.getenv("MT5_LOGIN", "")
+    mt5_password: str = os.getenv("MT5_PASSWORD", "")
+    mt5_server: str = os.getenv("MT5_SERVER", "")
+    mt5_path: str = os.getenv("MT5_PATH", "")
+
+    # --- Trading ---
+    symbol: str = os.getenv("SYMBOL", "EURUSD")
+    symbols: tuple = tuple(
+        s.strip().upper()
+        for s in os.getenv("SYMBOLS", "EURUSD,GBPUSD,USDJPY,AUDUSD,USDCAD,USDCHF").split(",")
+        if s.strip()
+    )
+    timeframe: str = os.getenv("TIMEFRAME", "M15")
+    candles_count: int = int(os.getenv("CANDLES_COUNT", "50"))
+    account_balance: float = float(os.getenv("ACCOUNT_BALANCE", "10000"))
+    risk_per_trade_pct: float = float(os.getenv("RISK_PER_TRADE_PCT", "1.0"))
+    loop_interval_seconds: int = int(os.getenv("LOOP_INTERVAL_SECONDS", "900"))
+    dry_run: bool = _get_bool("DRY_RUN", True)
+
+
+settings = Settings()
