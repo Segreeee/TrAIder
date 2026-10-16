@@ -31,7 +31,7 @@ class Settings:
 
     # --- Analisti locali (Ollama, endpoint OpenAI-compatible) ---
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-    ollama_model_technical: str = os.getenv("OLLAMA_MODEL_TECHNICAL", "deepseek-coder-v2:16b")
+    ollama_model_technical: str = os.getenv("OLLAMA_MODEL_TECHNICAL", "gemma3:12b")
     ollama_model_macro: str = os.getenv("OLLAMA_MODEL_MACRO", "gemma3:12b")
     ollama_model_judge: str = os.getenv("OLLAMA_MODEL_JUDGE", "gemma3:12b")
     ollama_timeout_seconds: float = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "600"))

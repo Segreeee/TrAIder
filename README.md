@@ -1,8 +1,8 @@
-# TrAIder — MVP AI Trading Agent (Qwen + MT5)
+# TrAIder — MVP AI Trading Agent (LLM locali Ollama + MT5)
 
-Demone headless che usa Qwen (via API OpenAI-compatible) come motore
-decisionale per generare segnali di trading su EURUSD, a partire da dati
-OHLCV live da MetaTrader5 e notizie finanziarie (mock).
+Demone headless che usa modelli locali Ollama (due analisti e un giudice)
+come motore decisionale per generare segnali di trading, a partire da dati
+OHLCV live da MetaTrader5 e notizie finanziarie reali (RSS Yahoo Finance).
 
 ## Albero del progetto
 
@@ -18,8 +18,8 @@ TrAIder/
 ├── core/
 │   ├── __init__.py
 │   ├── data_feed.py         # Data Ingestion mercato: MT5 + RSI/EMA (pandas-ta)
-│   ├── news_feed.py         # Data Ingestion notizie: mock-up (sostituibile con Finnhub)
-│   ├── prompt_builder.py    # Costruzione system/user prompt per Qwen
+│   ├── news_feed.py         # Data Ingestion notizie: RSS Yahoo Finance (sostituibile con Finnhub)
+│   ├── prompt_builder.py    # Costruzione system/user prompt
 │   ├── qwen_brain.py        # Chiamata LLM (openai SDK) + parsing/validazione JSON
 │   ├── risk_manager.py      # Calcolo lot size max (rischio 1% capitale)
 │   └── executor.py          # Esecuzione ordine: mock (dry-run) o invio reale a MT5 (solo main.py)
@@ -41,18 +41,20 @@ TrAIder/
    di TA-Lib per evitare la compilazione di dipendenze C.
 
 2. Copia `.env.example` in `.env` e compila almeno:
-   - `QWEN_API_KEY`, `QWEN_BASE_URL`, `QWEN_MODEL`
+   - i modelli Ollama (vedi sotto); `QWEN_*` non e' piu' usato dalla pipeline.
    - eventualmente `MT5_LOGIN` / `MT5_PASSWORD` / `MT5_SERVER` se il terminale
      non è già loggato manualmente.
    - Lascia `DRY_RUN=true` per i primi test: l'executor stampera' l'ordine
      simulato invece di inviarlo a MT5.
-   - Analisti locali (opzionali, default gia' impostati): `OLLAMA_MODEL_TECHNICAL`
-     (`deepseek-coder-v2:16b`) e `OLLAMA_MODEL_MACRO` (`gemma3:12b`). Emettono
-     un verdetto ciascuno e Qwen arbitra (LLM-as-a-judge); se Ollama non
-     risponde si ricade su Qwen da solo. Consigliato avviare Ollama con
-     `OLLAMA_KEEP_ALIVE=30m` (o `-1`): il primo caricamento a freddo di un
-     modello puo' richiedere alcuni minuti. Evita modelli "thinking"
-     (es. `deepseek-r1`): troppo lenti senza GPU capiente.
+   - Modelli Ollama (default gia' impostati, tutti `gemma3:12b`):
+     `OLLAMA_MODEL_TECHNICAL`, `OLLAMA_MODEL_MACRO` e `OLLAMA_MODEL_JUDGE`.
+     Analista tecnico e macro emettono un verdetto ciascuno, il giudice
+     arbitra (LLM-as-a-judge); se nessun analista risponde il giudice decide
+     da solo. Usare lo stesso modello per tutti i ruoli evita i ricaricamenti
+     (su 15 GB di RAM / 4 GB di VRAM ogni cambio modello costa minuti).
+     Consigliato avviare Ollama con `OLLAMA_KEEP_ALIVE=30m` (o `-1`). Evita
+     i modelli "thinking" (es. `deepseek-r1`) e quelli da 14B+ (`phi4`
+     manda in crash il server per memoria su questa macchina).
 
 3. Avvia il demone headless (loop automatico, esegue/simula ordini):
    ```
@@ -66,7 +68,7 @@ TrAIder/
    streamlit run dashboard.py
    ```
    Si apre nel browser su `http://localhost:8501`. Premendo **"Analizza ora"**
-   esegue un singolo ciclo (dati MT5 -> indicatori -> Qwen -> risk check) e
+   esegue un singolo ciclo (dati MT5 -> indicatori -> analisti + giudice -> risk check) e
    mostra il segnale con grafico a candele, RSI, motivazione del modello e
    storico delle analisi. La dashboard è puramente informativa: non invia mai
    ordini al conto, nemmeno in modalità live — l'eventuale esecuzione resta
@@ -74,14 +76,14 @@ TrAIder/
 
 ## Note di design
 
-- **Risk management indipendente dall'LLM**: il `lot_size` proposto da Qwen
+- **Risk management indipendente dall'LLM**: il `lot_size` proposto dall'LLM
   viene sempre validato/ricalcolato da `RiskManager.cap_llm_lot_size`, che
   applica il vincolo "rischio massimo 1% del capitale" in base alla distanza
   entry/stop-loss. L'LLM non ha mai l'ultima parola sul sizing.
-- **Gestione errori**: timeout, errori HTTP e JSON malformati dal provider
-  Qwen sollevano `QwenBrainError` e vengono loggati senza fermare il demone
+- **Gestione errori**: timeout, errori HTTP e JSON malformati dal modello
+  sollevano `QwenBrainError` e vengono loggati senza fermare il demone
   (il ciclo successivo riparte regolarmente).
-- **Sostituibilità**: `MockNewsFeed` implementa l'interfaccia astratta
+- **Sostituibilità**: `YahooNewsFeed` implementa l'interfaccia astratta
   `NewsFeed.get_latest_news(symbol, limit)` — una futura `FinnhubNewsFeed`
   può sostituirla senza toccare `main.py` o `prompt_builder.py`.
 - **Nessuna UI**: tutto l'output è su stdout + file di log rotante
