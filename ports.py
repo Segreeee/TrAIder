@@ -1,16 +1,17 @@
 """Porte verso il mondo esterno (D-001). Il dominio non le conosce; l'orchestrazione le riceve
 già costruite. Ogni porta ha un fake in tests/fakes.py e un contratto in tests/contracts/.
-Le porte Broker e SignalStore arrivano nei passi P3.13–P3.14."""
+La porta SignalStore arriva nel passo P3.14."""
 import time
 from dataclasses import dataclass
-from typing import Optional, Protocol, runtime_checkable
+from typing import Callable, Optional, Protocol, runtime_checkable
 
 import pandas as pd
 from pydantic import BaseModel, ValidationError
 
 from domain.news import NewsItem
+from domain.types import Direction
 
-__all__ = ["Llm", "LlmResponse", "LlmResult", "MarketData", "NewsFeed", "NewsItem", "call_validated"]
+__all__ = ["Broker", "Fill", "OrderRequest", "Position", "build_broker", "Llm", "LlmResponse", "LlmResult", "MarketData", "NewsFeed", "NewsItem", "call_validated"]
 
 
 @runtime_checkable
@@ -83,3 +84,52 @@ def call_validated(
                          (time.perf_counter() - start) * 1000, tokens_in, tokens_out, attempt, True)
     return LlmResult(None, raw, llm.model, llm.model_digest, prompt_version,
                      (time.perf_counter() - start) * 1000, tokens_in, tokens_out, max_retries + 1, False, error)
+
+
+# --- Broker ------------------------------------------------------------------ #
+@dataclass(frozen=True)
+class OrderRequest:
+    symbol: str
+    direction: Direction
+    lots: float
+    sl: float
+    tp: float
+
+
+@dataclass(frozen=True)
+class Fill:
+    mode: str              # "sim" | "mt5"
+    accepted: bool
+    fill_price: float
+    spread: float          # in prezzo (ask − bid) al momento del submit
+    ticket: Optional[int]
+    reason: str = ""
+
+
+@dataclass(frozen=True)
+class Position:
+    symbol: str
+    direction: Direction
+    lots: float
+    entry: float
+    sl: float
+    tp: float
+    ticket: Optional[int] = None
+
+
+@runtime_checkable
+class Broker(Protocol):
+    def submit(self, order: OrderRequest) -> Fill: ...
+    def positions(self) -> list[Position]: ...
+
+
+def build_broker(
+    *, dry_run: bool, allow_live: bool, make_live: Callable[[], Broker], make_sim: Callable[[], Broker],
+) -> Broker:
+    """Doppio consenso: il broker reale si costruisce solo con dry_run False E allow_live True.
+    I flag devono essere bool veri: una stringa come "false" è vera in Python e aprirebbe il conto."""
+    if type(dry_run) is not bool or type(allow_live) is not bool:
+        raise TypeError("dry_run e allow_live devono essere bool")
+    if not dry_run and allow_live:
+        return make_live()
+    return make_sim()
