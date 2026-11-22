@@ -1,17 +1,17 @@
 """Porte verso il mondo esterno (D-001). Il dominio non le conosce; l'orchestrazione le riceve
-già costruite. Ogni porta ha un fake in tests/fakes.py e un contratto in tests/contracts/.
-La porta SignalStore arriva nel passo P3.14."""
+già costruite. Ogni porta ha un fake in tests/fakes.py e un contratto in tests/contracts/."""
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Callable, Optional, Protocol, runtime_checkable
 
 import pandas as pd
 from pydantic import BaseModel, ValidationError
 
 from domain.news import NewsItem
-from domain.types import Direction
+from domain.types import Candidate, Direction
 
-__all__ = ["Broker", "Fill", "OrderRequest", "Position", "build_broker", "Llm", "LlmResponse", "LlmResult", "MarketData", "NewsFeed", "NewsItem", "call_validated"]
+__all__ = ["Broker", "Fill", "OrderRequest", "Position", "build_broker", "CandidateRecord", "Outcome", "SignalStore", "Llm", "LlmResponse", "LlmResult", "MarketData", "NewsFeed", "NewsItem", "call_validated"]
 
 
 @runtime_checkable
@@ -133,3 +133,49 @@ def build_broker(
     if not dry_run and allow_live:
         return make_live()
     return make_sim()
+
+# --- Archivio ---------------------------------------------------------------- #
+@dataclass(frozen=True)
+class CandidateRecord:
+    """Un candidato con tutto ciò che è servito a decidere (regola: ogni segnale va in archivio)."""
+    variant: str
+    candidate: Candidate
+    cost_pips: float
+    p: float
+    p_star: float
+    ev: float
+    ev5: float
+    decision: str                       # "TRADE" | "HOLD"
+    hold_reason: Optional[str] = None   # HoldReason.value se HOLD
+
+
+@dataclass(frozen=True)
+class Outcome:
+    result: str                 # "TP" | "SL" | "TIMEOUT"
+    exit_price: Optional[float]
+    r_net: Optional[float]
+    r_gross: Optional[float]
+    resolved_by: str            # "virtuale" | "broker"
+    resolved_at: datetime
+
+
+@runtime_checkable
+class SignalStore(Protocol):
+    def begin_cycle(self, symbol: str, candle_close_utc: datetime) -> Optional[int]:
+        """Id del ciclo, o None se quella candela per quel simbolo è già stata elaborata."""
+        ...
+
+    def last_cycle(self, symbol: str) -> Optional[datetime]: ...
+    def record_llm_call(self, cycle_id: int, role: str, result: LlmResult) -> None: ...
+
+    def record_candidate(self, cycle_id: int, record: CandidateRecord) -> int:
+        """Id del candidato; ValueError se la variante è già registrata per il ciclo."""
+        ...
+
+    def record_execution(self, candidate_id: int, fill: Fill, lots: float) -> None: ...
+
+    def record_outcome(self, candidate_id: int, outcome: Outcome) -> bool:
+        """True se scritto, False se il candidato aveva già un esito."""
+        ...
+
+    def pending_candidates(self) -> list[tuple[int, CandidateRecord]]: ...
