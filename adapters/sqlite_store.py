@@ -1,5 +1,6 @@
 """Archivio SQLite che implementa la porta SignalStore (D-007). Il file sta in data/, ignorato da git."""
 import hashlib
+import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +14,13 @@ SCHEMA = Path(__file__).with_name("schema.sql")
 
 def _iso(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).isoformat()
+
+
+def _gate_passed(hold_reason: Optional[str]) -> Optional[int]:
+    """NULL se la decisione si è fermata prima del gate (LLM non valido, perdita giornaliera)."""
+    if hold_reason in ("LLM_INVALID", "DAILY_LOSS"):
+        return None
+    return int(hold_reason != "GATE_EV")
 
 
 class SqliteStore:
@@ -72,9 +80,11 @@ class SqliteStore:
         c = record.candidate
         cur = self._insert(
             "INSERT INTO candidates (cycle_id, variant, direction, entry_ref, sl, tp, d_sl, d_tp, cost_pips, p, p_star,"
-            " ev, ev5, final_action, hold_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " ev, ev5, final_action, hold_reason, p0, p5, lot, gate_passed, features_json)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (cycle_id, record.variant, c.direction.value, c.entry, c.sl, c.tp, c.d_sl, c.d_tp, record.cost_pips,
-             record.p, record.p_star, record.ev, record.ev5, record.decision, record.hold_reason))
+             record.p, record.p_star, record.ev, record.ev5, record.decision, record.hold_reason,
+             record.p0, record.p5, record.lot, _gate_passed(record.hold_reason), json.dumps(record.features)))
         return cur.lastrowid
 
     def record_execution(self, candidate_id: int, fill: Fill, lots: float) -> None:
@@ -94,13 +104,27 @@ class SqliteStore:
              outcome.r_net, outcome.resolved_by))
         return True
 
-    def pending_candidates(self) -> list[tuple[int, CandidateRecord]]:
-        rows = self.conn.execute(
-            "SELECT k.candidate_id, k.variant, y.symbol, k.direction, k.entry_ref, k.sl, k.tp, y.candle_close_utc,"
-            " k.cost_pips, k.p, k.p_star, k.ev, k.ev5, k.final_action, k.hold_reason"
-            " FROM candidates k JOIN cycles y USING (cycle_id)"
-            " WHERE k.candidate_id NOT IN (SELECT candidate_id FROM outcomes) ORDER BY k.candidate_id").fetchall()
-        return [(r[0], CandidateRecord(
+    _RECORD_COLUMNS = ("k.candidate_id, k.variant, y.symbol, k.direction, k.entry_ref, k.sl, k.tp, y.candle_close_utc,"
+                       " k.cost_pips, k.p, k.p_star, k.ev, k.ev5, k.final_action, k.hold_reason, k.p0, k.p5, k.lot,"
+                       " k.features_json")
+
+    @staticmethod
+    def _to_record(r) -> CandidateRecord:
+        return CandidateRecord(
             variant=r[1], candidate=Candidate(r[2], Direction(r[3]), r[4], r[5], r[6], datetime.fromisoformat(r[7])),
             cost_pips=r[8], p=r[9], p_star=r[10], ev=r[11], ev5=r[12], decision=r[13], hold_reason=r[14],
-        )) for r in rows]
+            p0=r[15], p5=r[16], lot=r[17], features=json.loads(r[18]) if r[18] else {})
+
+    def pending_candidates(self) -> list[tuple[int, CandidateRecord]]:
+        rows = self.conn.execute(
+            f"SELECT {self._RECORD_COLUMNS} FROM candidates k JOIN cycles y USING (cycle_id)"
+            " WHERE k.candidate_id NOT IN (SELECT candidate_id FROM outcomes) ORDER BY k.candidate_id").fetchall()
+        return [(r[0], self._to_record(r)) for r in rows]
+
+    def resolved(self, variant: str) -> list[tuple[CandidateRecord, Outcome]]:
+        rows = self.conn.execute(
+            f"SELECT {self._RECORD_COLUMNS}, o.resolution, o.exit_price, o.r_net, o.r_gross, o.resolved_by, o.exit_utc"
+            " FROM candidates k JOIN cycles y USING (cycle_id) JOIN outcomes o USING (candidate_id)"
+            " WHERE k.variant = ? ORDER BY k.candidate_id", (variant,)).fetchall()
+        return [(self._to_record(r), Outcome(r[19], r[20], r[21], r[22], r[23], datetime.fromisoformat(r[24])))
+                for r in rows]

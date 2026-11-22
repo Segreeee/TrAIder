@@ -3,12 +3,13 @@
 from typing import Callable
 
 from domain.types import Direction, levels_consistent
-from ports import Fill, OrderRequest, Position
+from ports import AccountState, Fill, OrderRequest, Position
 
 
 class SimBroker:
-    def __init__(self, quote: Callable[[str], tuple[float, float]]):
+    def __init__(self, quote: Callable[[str], tuple[float, float]], equity: float = 10_000.0):
         self._quote = quote  # simbolo -> (bid, ask)
+        self._equity = equity
         self._positions: list[Position] = []
         self._next_ticket = 1
 
@@ -25,3 +26,8 @@ class SimBroker:
 
     def positions(self) -> list[Position]:
         return list(self._positions)
+
+    def account(self) -> AccountState:
+        """Capitale configurato (ACCOUNT_BALANCE), posizioni simulate, P&L del giorno 0:
+        il broker simulato non segue i prezzi; gli esiti li calcola la risoluzione virtuale."""
+        return AccountState(self._equity, [(p.symbol, p.direction.value) for p in self._positions], 0.0)

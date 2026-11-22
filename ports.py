@@ -1,7 +1,7 @@
 """Porte verso il mondo esterno (D-001). Il dominio non le conosce; l'orchestrazione le riceve
 già costruite. Ogni porta ha un fake in tests/fakes.py e un contratto in tests/contracts/."""
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable, Optional, Protocol, runtime_checkable
 
@@ -19,6 +19,10 @@ class MarketData(Protocol):
     def closed_bars(self, symbol: str, timeframe: str, count: int) -> pd.DataFrame:
         """Ultime `count` candele chiuse. Colonne: timestamp (apertura, UTC tz-aware),
         open, high, low, close, volume, spread (in punti)."""
+        ...
+
+    def eur_quote_rate(self, symbol: str) -> float:
+        """Cambio EUR/valuta quotata per il valore del pip (1.0 se la quotata è EUR)."""
         ...
 
 
@@ -128,6 +132,7 @@ class AccountState:
 class Broker(Protocol):
     def submit(self, order: OrderRequest) -> Fill: ...
     def positions(self) -> list[Position]: ...
+    def account(self) -> AccountState: ...
 
 
 def build_broker(
@@ -154,6 +159,10 @@ class CandidateRecord:
     ev5: float
     decision: str                       # "TRADE" | "HOLD"
     hold_reason: Optional[str] = None   # HoldReason.value se HOLD
+    p0: Optional[float] = None
+    p5: Optional[float] = None
+    lot: Optional[float] = None
+    features: dict = field(default_factory=dict)  # caratteristiche usate dal modello (None = mancante)
 
 
 @dataclass(frozen=True)
@@ -191,3 +200,7 @@ class SignalStore(Protocol):
         ...
 
     def pending_candidates(self) -> list[tuple[int, CandidateRecord]]: ...
+
+    def resolved(self, variant: str) -> list[tuple[CandidateRecord, Outcome]]:
+        """Candidati risolti di una variante, in ordine di registrazione: lo storico per stimare il modello."""
+        ...

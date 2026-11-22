@@ -113,6 +113,9 @@ class FakeMarketData:
             "spread": np.full(count, 8),  # punti: 0.8 pip a 5 cifre
         })
 
+    def eur_quote_rate(self, symbol: str) -> float:
+        return 1.0 if symbol[3:6] == "EUR" else 1.10
+
 
 class FakeNews:
     def __init__(self, now: datetime, items: list[NewsItem] | None = None):
@@ -173,3 +176,7 @@ class FakeStore:
 
     def pending_candidates(self) -> list[tuple[int, CandidateRecord]]:
         return [(cid, r) for cid, (_, r) in self.candidates.items() if cid not in self.outcomes]
+
+    def resolved(self, variant: str) -> list[tuple[CandidateRecord, Outcome]]:
+        return [(r, self.outcomes[cid]) for cid, (_, r) in self.candidates.items()
+                if r.variant == variant and cid in self.outcomes]

@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     max_open_positions: int = Field(3, ge=1, le=20)
     max_currency_exposure: int = Field(1, ge=1, le=10)
     daily_loss_limit_pct: float = Field(3.0, gt=0, le=20)
+    min_lot: float = Field(0.01, gt=0)
+    lot_step: float = Field(0.01, gt=0)
+    max_lot: float = Field(1.0, gt=0, le=100)   # tetto prudente per il conto demo
+    production_variant: Literal["v1-p0", "v2-tecnica", "v3-llm-tecnico", "v4-llm-macro", "v5-consenso",
+                                "v7-completo"] = "v7-completo"
 
     # --- Costi: c = spread (da MT5) + commissione + slippage ---
     commission_eur_per_lot: Optional[float] = Field(None, ge=0)  # andata e ritorno; obbligatoria fuori da DRY_RUN
