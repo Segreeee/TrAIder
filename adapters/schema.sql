@@ -89,3 +89,28 @@ CREATE TABLE IF NOT EXISTS outcomes (
     r_net        REAL,
     resolved_by  TEXT NOT NULL CHECK (resolved_by IN ('virtuale', 'broker'))
 );
+
+-- Sola aggiunta (P3.20). Eccezioni: chiusura di un ciclo 'running' (una volta) e veto_shadow da NULL (una volta).
+CREATE TRIGGER IF NOT EXISTS cycles_immutable BEFORE UPDATE OF
+    cycle_id, symbol, candle_close_utc, candle_close_server, code_version, config_hash, input_json, input_hash, started_at
+    ON cycles BEGIN SELECT RAISE(ABORT, 'cycles: sola aggiunta'); END;
+CREATE TRIGGER IF NOT EXISTS cycles_close_once BEFORE UPDATE OF finished_at, status, error ON cycles
+    WHEN OLD.status <> 'running' BEGIN SELECT RAISE(ABORT, 'cycles: ciclo già chiuso'); END;
+
+CREATE TRIGGER IF NOT EXISTS candidates_immutable BEFORE UPDATE OF
+    candidate_id, cycle_id, variant, direction, entry_ref, sl, tp, d_sl, d_tp, cost_pips, p0, p, p_star, p5,
+    ev, ev5, gate_passed, final_action, lot, hold_reason, features_json
+    ON candidates BEGIN SELECT RAISE(ABORT, 'candidates: sola aggiunta'); END;
+CREATE TRIGGER IF NOT EXISTS candidates_veto_once BEFORE UPDATE OF veto_shadow ON candidates
+    WHEN OLD.veto_shadow IS NOT NULL OR NEW.veto_shadow IS NULL
+    BEGIN SELECT RAISE(ABORT, 'candidates: veto_shadow si scrive una volta'); END;
+
+CREATE TRIGGER IF NOT EXISTS llm_calls_no_update BEFORE UPDATE ON llm_calls BEGIN SELECT RAISE(ABORT, 'llm_calls: sola aggiunta'); END;
+CREATE TRIGGER IF NOT EXISTS executions_no_update BEFORE UPDATE ON executions BEGIN SELECT RAISE(ABORT, 'executions: sola aggiunta'); END;
+CREATE TRIGGER IF NOT EXISTS outcomes_no_update BEFORE UPDATE ON outcomes BEGIN SELECT RAISE(ABORT, 'outcomes: esito scritto una volta'); END;
+
+CREATE TRIGGER IF NOT EXISTS cycles_no_delete BEFORE DELETE ON cycles BEGIN SELECT RAISE(ABORT, 'cycles: niente cancellazioni'); END;
+CREATE TRIGGER IF NOT EXISTS llm_calls_no_delete BEFORE DELETE ON llm_calls BEGIN SELECT RAISE(ABORT, 'llm_calls: niente cancellazioni'); END;
+CREATE TRIGGER IF NOT EXISTS candidates_no_delete BEFORE DELETE ON candidates BEGIN SELECT RAISE(ABORT, 'candidates: niente cancellazioni'); END;
+CREATE TRIGGER IF NOT EXISTS executions_no_delete BEFORE DELETE ON executions BEGIN SELECT RAISE(ABORT, 'executions: niente cancellazioni'); END;
+CREATE TRIGGER IF NOT EXISTS outcomes_no_delete BEFORE DELETE ON outcomes BEGIN SELECT RAISE(ABORT, 'outcomes: niente cancellazioni'); END;

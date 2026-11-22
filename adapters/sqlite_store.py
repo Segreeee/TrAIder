@@ -18,6 +18,7 @@ class SqliteStore:
     def __init__(self, path: str, clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc)):
         self.conn = sqlite3.connect(path)
         self.conn.execute("PRAGMA foreign_keys = ON")
+        self.conn.execute("PRAGMA journal_mode = WAL")  # la dashboard legge mentre il demone scrive; in :memory: resta memory
         self.conn.executescript(SCHEMA.read_text(encoding="utf-8"))
         self._clock = clock
 
