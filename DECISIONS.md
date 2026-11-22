@@ -85,7 +85,7 @@ Le analisi complete con le matrici stanno in `docs/ALTERNATIVE.md`.
 | T-001 | `git rm --cached` di `logs/signals_history.json` e `logs/backtest_*.csv` (restano su disco) | claude, su conferma | Fase 7 | da fare |
 | T-002 | `YahooNewsFeed` non usata: rimuoverla o tenerla come adattatore di prova | utente | D-005 | da fare |
 | T-003 | Ricordare all'utente di configurare l'email "noreply" di GitHub per i commit | claude | Fase 7 | da fare |
-| T-004 | Controllo della direzione di TP/SL mancante (`abs()` nel calcolo di R:R) | claude | Fase 3, primi passi | da fare |
+| T-004 | Controllo della direzione di TP/SL mancante (`abs()` nel calcolo di R:R) | claude | Fase 3, primi passi | fatto (21f63eb) |
 | T-005 | `.claude/` è in `.gitignore`: le regole deny valgono solo su questa macchina | utente | Guardrail | da decidere |
 | T-006 | `ALLOW_LIVE_TRADING` non esiste nel codice: un solo flag basta per ordini reali | claude | Fase 3, primo passo | fatto (7b415a2) |
 | T-007 | Verificare il fuso orario delle barre MT5 contro UTC (può sfasare gli esiti, anche dei 21 trade) | claude | Fase 3 | da fare |
