@@ -90,4 +90,4 @@ Le analisi complete con le matrici stanno in `docs/ALTERNATIVE.md`.
 | T-006 | `ALLOW_LIVE_TRADING` non esiste nel codice: un solo flag basta per ordini reali | claude | Fase 3, primo passo | fatto (7b415a2) |
 | T-007 | Verificare il fuso orario delle barre MT5 contro UTC (può sfasare gli esiti, anche dei 21 trade) | claude | Fase 3 | da fare |
 | T-008 | Riconfermare sulle pagine ufficiali i termini e i limiti di Finnhub | claude | D-005 | da fare |
-| T-009 | R:R esattamente 1.5 viene scartato per errore in virgola mobile (30/20 pip → 1.4999…): nel dominio usare distanze arrotondate al pip | claude | P3.08 / P4.01 | da fare |
+| T-009 | R:R esattamente 1.5 viene scartato per errore in virgola mobile (30/20 pip → 1.4999…): nel dominio usare distanze arrotondate al pip | claude | P3.08 / P4.01 | fatto nel dominio (9d4ffa0); il gate legacy resta finché non viene sostituito |

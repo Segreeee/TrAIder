@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-22 · **Prossima azione:** P3.05 [UTENTE] lanciare toolsdiagnose_mt5_tz.py a mercato aperto; intanto P3.06 (tipi di dominio).
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-22 · **Prossima azione:** P4.01 (p0, W, L, p*, EV). In attesa: P3.05 [UTENTE].
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -910,3 +910,4 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-22: piano approvato (incluse le tre conferme: rischio con costo, 0.50→0.55 lotti, ritiro dei test del giudice decisore).
 - 2026-11-22: P3.01 fatto (0ad3cdd RED, 1733027 GREEN: 34 passed). P3.02 fatto (fe2b65c RED, 7b415a2 GREEN: 40 passed) — T-006 chiuso.
 - 2026-11-22: P3.03 fatto (51d1817 RED, 21f63eb GREEN: 46 passed) — T-004 chiuso; aperto T-009 (R:R 1.5 esatto scartato per virgola mobile). P3.04 fatto (4a3677a RED, GREEN: 54 passed); pytest in modalità importlib.
+- 2026-11-22: P3.06–P3.10 fatti (tipi, pip in EUR, costi ed esito, rischio, esposizione): 103 passed. T-009 risolto nel dominio con distanze arrotondate a 0.1 pip.
