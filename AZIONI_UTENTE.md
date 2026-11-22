@@ -34,7 +34,7 @@ Hai scelto: **Q-005 → a** (già applicata), **T-010 → correggi** (già appli
 
 Se scegli **chiedo** per Finnhub: vai su https://finnhub.io, usa il modulo/indirizzo di contatto indicato sul sito e chiedi il permesso di usare le notizie per un progetto di portfolio pubblico che mostra solo metriche aggregate. Dimmi poi la risposta.
 
-### A2. 🖥️ Aggiorna il file `.env`
+### A2. ✅ Aggiorna il file `.env` (fatto: configurazione valida, verificata il 2026-11-22)
 
 Io non posso modificarlo (le regole di sicurezza me lo impediscono), quindi lo fai tu.
 
@@ -64,7 +64,7 @@ Se stampa `configurazione valida` hai finito. Se stampa un errore, copiamelo: co
 
 ⚠️ Dopo questa modifica **non lanciare il vecchio `python main.py`**: senza le righe `QWEN_*` userebbe l'indirizzo remoto predefinito di Qwen. Il nuovo avvio arriva con P3.28.
 
-### A3. 🖥️ Trova la commissione del tuo conto demo
+### A3. ✅ Trova la commissione del tuo conto demo (fatto)
 
 **Cosa serve:** la commissione **andata e ritorno** per **1 lotto standard**, in **EUR**.
 
@@ -77,6 +77,13 @@ Se stampa `configurazione valida` hai finito. Se stampa un errore, copiamelo: co
 
 Se non sei sicuro del valore, scrivimi tipo di conto e cosa vedi sul sito, e lo ricaviamo insieme. Non lo invento io.
 
+### A4a. 🖥️ Cambia la password del conto demo e controlla il server (urgente)
+
+Durante un test la password MT5 del `.env` è finita in un messaggio di errore (difetto dei test, ora corretto:
+nessun test può più leggere la configurazione reale). Per sicurezza:
+1. **Cambia la password del conto demo** (in MT5: *Strumenti → Opzioni → Server → Cambia*, oppure dall'area clienti del broker) e aggiorna `MT5_PASSWORD` nel `.env`.
+2. **Controlla il server:** nel `.env` `MT5_SERVER` indica un server **MetaQuotes**, non Pepperstone. Il progetto prevede il demo **Pepperstone in EUR**. In MT5 apri *File → Accedi al conto di trading*: lì vedi numero di conto e nome esatto del server (per Pepperstone è del tipo `Pepperstone-Demo`). Metti nel `.env` `MT5_LOGIN` e `MT5_SERVER` del conto Pepperstone. I conti demo MetaQuotes scadono dopo un periodo di inattività: è una causa probabile dell'errore -6.
+
 ### A4. 🖥️ Verifica il fuso orario del server MT5 (P3.05)
 
 **Quando:** da **lunedì a venerdì**, con il mercato aperto. Oggi è domenica: il forex riapre domenica sera (ora italiana circa 23:00), ma meglio lunedì in orario europeo.
@@ -84,7 +91,7 @@ Se non sei sicuro del valore, scrivimi tipo di conto e cosa vedi sul sito, e lo 
 **Dove:** sul PC dove gira MetaTrader 5.
 
 **Come:**
-1. Apri **MetaTrader 5** e verifica di essere collegato al **conto demo** (in basso a destra non deve esserci "Nessuna connessione").
+1. Apri **MetaTrader 5** (quello di Pepperstone). Lo script ora usa login, password e server del `.env`, quindi basta che il terminale sia installato; se è aperto, verifica che in basso a destra non ci sia "Nessuna connessione".
 2. In VS Code apri il terminale: menu **Terminale → Nuovo terminale**.
 3. Incolla ed esegui:
    ```
@@ -100,6 +107,7 @@ Se non sei sicuro del valore, scrivimi tipo di conto e cosa vedi sul sito, e lo 
 
 Lo script **legge solo dati**: non apre posizioni e non usa funzioni di trading.
 Se compare "Scarto non determinabile", il mercato è chiuso: riprova più tardi in un giorno feriale.
+Se compare "initialize fallita: (-6, ...Authorization failed)", login, password o server del `.env` non corrispondono al conto (vedi A4a).
 
 ---
 
