@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from domain.types import Candidate, Direction
-from ports import CandidateRecord, Outcome
+from ports import CandidateRecord, Fill, LlmResult, Outcome
 
 CLOSE = datetime(2026, 3, 2, 12, 0, tzinfo=timezone.utc)
 
@@ -57,10 +57,19 @@ def check_pending_excludes_resolved(make_store):
 def check_llm_call_and_execution_are_kept(make_store):
     store = make_store()
     cycle = store.begin_cycle("EURUSD", CLOSE)
-    store.record_llm_call(cycle, role="tecnico", result=object())
+    result = LlmResult(None, "non json", "qwen3:8b", "sha256:abc", "tecnico-v1", 812.5, 300, 20, 3, False, "schema: x")
+    store.record_llm_call(cycle, role="tecnico", result=result)
     cid = store.record_candidate(cycle, _record())
-    store.record_execution(cid, fill=object(), lots=0.1)
+    store.record_execution(cid, fill=Fill("sim", True, 1.10008, 0.00008, 1), lots=0.1)
+
+
+def check_pending_roundtrip_keeps_the_record(make_store):
+    store = make_store()
+    rec = _record()
+    cid = store.record_candidate(store.begin_cycle("EURUSD", CLOSE), rec)
+    assert store.pending_candidates() == [(cid, rec)]
 
 
 ALL = [check_begin_cycle_idempotent, check_candidate_unique_per_variant, check_outcome_recorded_once,
-       check_pending_excludes_resolved, check_llm_call_and_execution_are_kept]
+       check_pending_excludes_resolved, check_llm_call_and_execution_are_kept,
+       check_pending_roundtrip_keeps_the_record]
