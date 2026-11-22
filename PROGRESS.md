@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-22 · **Prossima azione:** P3.27 (risoluzione virtuale dei candidati). In attesa [UTENTE]: P3.05 (fuso MT5), P3.18 (Finnhub, T-008), Q-005 (soglia di attivazione del modello), COMMISSION_EUR_PER_LOT e aggiornamento di `.env` (necessario da P3.28).
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-22 · **Prossima azione:** P3.28 (scheduler e composizione). In attesa [UTENTE]: P3.05 (fuso MT5), P3.18 (Finnhub, T-008), Q-005 (soglia di attivazione del modello), COMMISSION_EUR_PER_LOT e aggiornamento di `.env` (necessario da P3.28).
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -793,6 +793,17 @@ Passo opzionale, non incluso nel conteggio: importare in sola lettura i 21 trade
 - **Rischio:** basso.
 - **Dipendenze:** P6.02.
 
+### P6.04 — Diagramma del sistema con Archify
+- **Obiettivo:** diagramma di architettura esplorabile (HTML autonomo, tema chiaro e scuro, esportabile in SVG) generato con la skill `archify` dal codice reale, non da una descrizione:
+  - vista a componenti: dominio puro al centro, le 5 porte, gli adattatori (MT5 dati e broker, LLM OpenAI-compatibile, notizie, SQLite, broker simulato), l'orchestrazione (`run_once`, varianti, decisione, risoluzione);
+  - vista di flusso di un ciclo: candela chiusa → candidato → analisti LLM → varianti → gate EV_5 → rischio ed esposizione → broker (solo variante di produzione) → archivio → risoluzione virtuale;
+  - evidenziati i punti di sicurezza: doppio consenso in `build_broker`, costruttore del broker MT5, archivio a sola aggiunta, regola anti-futuro sulle notizie.
+- **Verifica:** ogni riquadro e ogni freccia corrispondono a un modulo o a una chiamata esistente (controllo incrociato con `grep` sugli import).
+- **File:** creato `docs/architettura.html` (più l'export SVG per il README).
+- **Accettazione:** il file si apre offline; i nomi dei moduli nel diagramma esistono nel repository.
+- **Rischio:** basso.
+- **Dipendenze:** P3.28 (flusso completo), P6.03.
+
 ---
 
 ## Blocco 8 — Revisione e pubblicazione (Fase 7)
@@ -817,13 +828,13 @@ Passo opzionale, non incluso nel conteggio: importare in sola lettura i 21 trade
 
 ### P7.03 — [UTENTE] README onesto e chiusura
 - **Obiettivo:**
-  - README con architettura, come si esegue (solo DRY_RUN), risultati reali con intervalli (anche negativi o non concludenti) e limiti;
+  - README con architettura (diagramma di P6.04), come si esegue (solo DRY_RUN), risultati reali con intervalli (anche negativi o non concludenti) e limiti;
   - promemoria per l'email noreply di GitHub (T-003) e decisione su T-005;
   - aggiornamento di PROGRESS.md e DECISIONS.md;
   - push **solo su tua conferma**.
 - **Accettazione:** il README non contiene numeri che non vengano dal report; T-001, T-003 e T-006 chiusi.
 - **Rischio:** basso.
-- **Dipendenze:** P7.02.
+- **Dipendenze:** P7.02, P6.04.
 
 ---
 
@@ -883,6 +894,7 @@ Passo opzionale, non incluso nel conteggio: importare in sola lettura i 21 trade
 | P6.01 | View-model | basso | P5.05 |
 | P6.02 | Rendering HTML (frontend-design) | basso | P6.01 |
 | P6.03 | [UTENTE] Generazione e via Streamlit | basso | P6.02 |
+| P6.04 | Diagramma del sistema con Archify | basso | P3.28, P6.03 |
 | P7.01 | Review | basso | tutti |
 | P7.02 | [UTENTE] Security scan e T-001 | medio | P7.01 |
 | P7.03 | [UTENTE] README e chiusura | basso | P7.02 |
@@ -915,3 +927,4 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-22: P3.11–P3.17 e P3.19–P3.20 fatti: porte (dati, notizie, LLM, broker, archivio) con contratti condivisi tra fake e adattatori; adattatori dati e broker MT5 (solo FakeMt5, nessuna richiesta inviata), LLM OpenAI-compatibile, archivio SQLite a sola aggiunta con WAL. 235 passed. Termini Finnhub verificati (T-008): serve la decisione dell'utente per P3.18.
 - 2026-11-22: P3.21 fatto (app/config.py, 253 passed). Il .env dell'utente ha 5 nomi vecchi (QWEN_API_KEY, QWEN_BASE_URL, QWEN_MODEL, SYMBOL, LOOP_INTERVAL_SECONDS) che la nuova configurazione rifiuta; gli altri valori passano la validazione.
 - 2026-11-22: P3.22–P3.26 fatti: generatore baseline, estrattori a schema chiuso, prompt separati, run_once con idempotenza, input completo in archivio (finish_cycle), varianti e decisione; solo la variante di produzione arriva al broker (simulato per default). 318 passed, 1 xfailed (Q-005: la regola BSS > 0 si attiva per caso con caratteristiche senza informazione in 4 semi su 10). Copertura: dominio 98%, app/adapters/ports 98%.
+- 2026-11-22: P3.27 fatto (app/resolve.py; first_hit nel dominio, condiviso con il simulatore): 327 passed, 1 xfailed. Trovato T-010 (spread contato due volte nei BUY), da decidere. Aggiunto P6.04 (diagramma Archify) alla roadmap. Azioni dell'utente raccolte in AZIONI_UTENTE.md.
