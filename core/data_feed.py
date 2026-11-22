@@ -79,9 +79,17 @@ class MarketDataFeed:
     # Estrazione dati
     # ------------------------------------------------------------------ #
     def fetch_ohlcv(
-        self, symbol: Optional[str] = None, timeframe: Optional[str] = None, count: Optional[int] = None
+        self, symbol: Optional[str] = None, timeframe: Optional[str] = None, count: Optional[int] = None,
+        include_forming: bool = False,
     ) -> pd.DataFrame:
-        """Scarica le ultime `count` candele per `symbol`/`timeframe` e restituisce un DataFrame OHLCV."""
+        """
+        Scarica le ultime `count` candele CHIUSE per `symbol`/`timeframe`.
+
+        In MT5 la posizione 0 e' la candela ancora in formazione: indicatori e
+        prezzo calcolati su di essa cambiano fino alla chiusura e non sono
+        confrontabili con il backtest (che usa solo candele chiuse). Per questo
+        si parte dalla posizione 1, salvo `include_forming=True`.
+        """
         if not self._connected:
             raise DataFeedError("Chiamare connect() prima di fetch_ohlcv().")
 
@@ -97,7 +105,8 @@ class MarketDataFeed:
         if not mt5.symbol_select(symbol, True):
             raise DataFeedError(f"Simbolo non disponibile/selezionabile: {symbol}")
 
-        rates = mt5.copy_rates_from_pos(symbol, tf_const, 0, count)
+        start_pos = 0 if include_forming else 1
+        rates = mt5.copy_rates_from_pos(symbol, tf_const, start_pos, count)
         if rates is None or len(rates) == 0:
             raise DataFeedError(
                 f"Nessuna candela ricevuta per {symbol} {timeframe}: {mt5.last_error()}"

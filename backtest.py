@@ -27,6 +27,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-signals", type=int, default=None, help="Tetto di sicurezza sul numero di punti valutati")
     parser.add_argument("--balance", type=float, default=settings.account_balance, help="Capitale simulato")
     parser.add_argument("--risk-pct", type=float, default=settings.risk_per_trade_pct, help="Rischio massimo per trade (%%)")
+    parser.add_argument("--cost-pips", type=float, default=settings.cost_pips,
+                        help=f"Costo per operazione in pip, andata e ritorno (default: {settings.cost_pips})")
     return parser.parse_args()
 
 
@@ -49,7 +51,7 @@ def main() -> None:
             symbol=args.symbol, timeframe=args.timeframe, start=start, end=end,
             account_balance=args.balance, risk_per_trade_pct=args.risk_pct,
             stride=args.stride, two_phase=args.two_phase, max_signals=args.max_signals,
-            progress_callback=on_progress,
+            progress_callback=on_progress, cost_pips=args.cost_pips,
         )
     except ValueError as exc:
         print(f"\nErrore: {exc}")

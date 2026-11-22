@@ -89,3 +89,21 @@ TrAIder/
 - **Nessuna UI**: tutto l'output è su stdout + file di log rotante
   (`logs/traider.log`), adatto per essere eseguito come servizio/task
   schedulato.
+
+## Sicurezza operativa (correzioni di novembre 2026)
+
+- **Notizie**: `NEWS_PROVIDER=none` di default. Senza notizie reali l'analista
+  macro non partecipa e il giudice lo sa. Le notizie `mock` sono consentite solo
+  con `DRY_RUN=true`: il demone si rifiuta di partire con notizie finte e ordini reali.
+- **Candele chiuse**: in live si analizzano solo candele chiuse, come nel backtest.
+- **Rischio**: il lotto si calcola sul capitale reale del conto. Se anche 0,01 lotti
+  supererebbero il rischio massimo, il trade non si fa. Una sola posizione per
+  simbolo, al massimo `MAX_OPEN_POSITIONS` aperte, esposizione netta per valuta
+  limitata da `MAX_CURRENCY_EXPOSURE` (EURUSD e GBPUSD long insieme = USD -2),
+  stop a `DAILY_LOSS_LIMIT_PCT` di perdita nel giorno. Prima di inviare l'ordine il
+  R:R viene ricontrollato al prezzo ask/bid reale.
+- **Costi**: backtest e tracciamento degli esiti sottraggono `COST_PIPS` (spread +
+  commissioni + slippage, andata e ritorno) a ogni operazione; il riepilogo mostra
+  R netto e R lordo.
+
+Test: `python -m unittest discover tests` (nessuna dipendenza da MT5, Ollama o rete).

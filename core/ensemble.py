@@ -46,6 +46,16 @@ def build_analysts() -> dict:
     }
 
 
+def active_analysts(analysts: dict, has_news: bool) -> dict:
+    """
+    Senza notizie reali l'analista macro/sentiment non ha nulla da analizzare:
+    escluderlo evita che "inventi" un contesto macro dal solo grafico.
+    """
+    if has_news:
+        return analysts
+    return {k: v for k, v in analysts.items() if k != MACRO_LABEL}
+
+
 def collect_persona_signals(base_prompt: str, analysts: dict) -> dict:
     """Interroga gli analisti in sequenza; quelli che falliscono vengono saltati (con warning)."""
     signals: dict = {}
@@ -64,12 +74,15 @@ def judge_signal(
     market_payload: dict,
     news_items: list,
     htf_trend: Optional[dict],
+    expected_analysts: int = 2,
+    account_balance: Optional[float] = None,
 ) -> TradeSignal:
     """Verdetto finale del giudice dati i verdetti degli analisti."""
     prompt = build_manager_prompt(
         symbol=symbol, timeframe=settings.timeframe, market_payload=market_payload,
-        news_items=news_items, account_balance=settings.account_balance,
+        news_items=news_items,
+        account_balance=account_balance if account_balance is not None else settings.account_balance,
         risk_per_trade_pct=settings.risk_per_trade_pct, htf_trend=htf_trend,
-        persona_signals=persona_signals,
+        persona_signals=persona_signals, expected_analysts=expected_analysts,
     )
     return judge.get_trade_signal(prompt, system_prompt=MANAGER_SYSTEM_PROMPT)

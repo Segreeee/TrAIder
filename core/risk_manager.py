@@ -82,17 +82,25 @@ class RiskManager:
         """
         sl_distance_price = abs(entry_price - stop_loss_price)
         if sl_distance_price <= 0:
-            logger.warning("Distanza SL nulla: impossibile calcolare il lot size, uso MIN_LOT.")
-            return MIN_LOT
+            logger.warning("Distanza SL nulla: impossibile calcolare il lot size, nessun trade.")
+            return 0.0
 
         sl_distance_pips = sl_distance_price / pip_size
         risk_amount = self.max_risk_amount()
 
         raw_lot = risk_amount / (sl_distance_pips * PIP_VALUE_PER_STANDARD_LOT_USD)
 
-        # Arrotonda per difetto al passo minimo (non superare mai il rischio consentito)
-        stepped_lot = math.floor(raw_lot / LOT_STEP) * LOT_STEP
-        lot = max(MIN_LOT, min(stepped_lot, MAX_LOT_SAFETY_CAP))
+        # Arrotonda per difetto al passo minimo (non superare mai il rischio consentito).
+        # Se anche il lotto minimo supererebbe il rischio massimo, il trade non si fa:
+        # prima qui veniva forzato MIN_LOT, sforando il limite su conti piccoli o stop larghi.
+        stepped_lot = math.floor(round(raw_lot / LOT_STEP, 9)) * LOT_STEP
+        if stepped_lot < MIN_LOT:
+            logger.warning(
+                "RiskManager: lotto calcolato %.4f sotto il minimo %.2f: il rischio massimo "
+                "(%.2f) non consente il trade.", raw_lot, MIN_LOT, risk_amount,
+            )
+            return 0.0
+        lot = min(stepped_lot, MAX_LOT_SAFETY_CAP)
 
         logger.info(
             "RiskManager: risk_amount=%.2f, sl_pips=%.1f, raw_lot=%.4f -> lot_size=%.2f",
@@ -107,6 +115,8 @@ class RiskManager:
         al minore tra i due.
         """
         max_allowed = self.calculate_lot_size(entry_price, stop_loss_price, pip_size)
+        if max_allowed <= 0:
+            return 0.0
         if llm_lot_size is None or llm_lot_size <= 0:
             return max_allowed
         capped = min(llm_lot_size, max_allowed)

@@ -16,7 +16,9 @@ try:
 except ImportError:  # pragma: no cover
     mt5 = None
 
+from config.settings import settings
 from core.qwen_brain import TradeSignal
+from core.risk_manager import compute_risk_reward_ratio, meets_min_risk_reward
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +36,8 @@ class OrderExecutor:
         Esegue (o simula) l'ordine derivato dal segnale.
         Ritorna il risultato dell'esecuzione (dict) oppure None se action == HOLD.
         """
-        if signal["action"] == "HOLD":
-            logger.info("Segnale HOLD: nessun ordine da eseguire.")
+        if signal["action"] == "HOLD" or not signal.get("lot_size"):
+            logger.info("Segnale HOLD o lotto nullo: nessun ordine da eseguire.")
             self._print_order_summary(symbol, signal, status="SKIPPED (HOLD)")
             return None
 
@@ -54,6 +56,15 @@ class OrderExecutor:
         order_type = mt5.ORDER_TYPE_BUY if signal["action"] == "BUY" else mt5.ORDER_TYPE_SELL
         price = tick.ask if signal["action"] == "BUY" else tick.bid
 
+        # Il R:R era stato verificato sulla chiusura dell'ultima candela; l'ordine parte
+        # invece al prezzo ask/bid attuale (spread incluso). Con stop di pochi pip la
+        # differenza puo' far scendere il rapporto sotto la soglia: si ricontrolla qui.
+        if not meets_min_risk_reward(price, signal["take_profit_price"], signal["stop_loss_price"]):
+            rr = compute_risk_reward_ratio(price, signal["take_profit_price"], signal["stop_loss_price"])
+            logger.warning("Ordine %s %s non inviato: R:R al prezzo reale %.5f e' %.2f.", signal["action"], symbol, price, rr)
+            self._print_order_summary(symbol, signal, status=f"SKIPPED (R:R reale {rr:.2f})")
+            return {"status": "skipped", "reason": f"R:R al prezzo reale {rr:.2f}"}
+
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
@@ -63,7 +74,7 @@ class OrderExecutor:
             "sl": signal["stop_loss_price"],
             "tp": signal["take_profit_price"],
             "deviation": 10,
-            "magic": 990011,
+            "magic": settings.magic_number,
             "comment": "TrAIder-Qwen-MVP",
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_IOC,

@@ -195,11 +195,16 @@ def build_manager_prompt(
     risk_per_trade_pct: float,
     htf_trend: Optional[dict],
     persona_signals: dict,
+    expected_analysts: int = 2,
 ) -> str:
     """
     Prompt per il manager: stesso contesto di mercato di `build_user_prompt`,
     con in coda i verdetti indipendenti delle personas (dict {nome: TradeSignal})
     e una richiesta finale di arbitraggio (vedi MANAGER_SYSTEM_PROMPT).
+
+    `expected_analysts` e' il numero di analisti attivi per scelta (es. 1 quando
+    l'analista macro e' escluso perche' non ci sono notizie reali): l'avviso di
+    analista mancante compare solo se ne manca uno che doveva rispondere.
     """
     base = build_user_prompt(
         symbol=symbol, timeframe=timeframe, market_payload=market_payload,
@@ -215,9 +220,9 @@ def build_manager_prompt(
     )
 
     missing_note = ""
-    if len(persona_signals) < 2:
+    if len(persona_signals) < expected_analysts:
         missing_note = (
-            f"\n(ATTENZIONE: solo {len(persona_signals)} analista su 2 e' disponibile. Senza un "
+            f"\n(ATTENZIONE: solo {len(persona_signals)} analista su {expected_analysts} e' disponibile. Senza un "
             "secondo parere indipendente preferisci HOLD salvo evidenza molto forte nei dati.)"
         )
 

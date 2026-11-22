@@ -20,11 +20,11 @@ import streamlit as st
 from plotly.subplots import make_subplots
 
 from config.settings import settings
-from core.backtester import simulate_outcome
+from core.backtester import realized_result, simulate_outcome
 from core.confidence import confidence_breakdown
 from core.data_feed import DataFeedError, MarketDataFeed
-from core.news_feed import YahooNewsFeed
-from core.ensemble import build_analysts, build_judge, collect_persona_signals, judge_signal
+from core.news_feed import NewsFeed, build_news_feed
+from core.ensemble import active_analysts, build_analysts, build_judge, collect_persona_signals, judge_signal
 from core.prompt_builder import build_user_prompt
 from core.qwen_brain import QwenBrain, QwenBrainError
 from core.risk_manager import (
@@ -80,7 +80,7 @@ def save_history(history: list) -> None:
     HISTORY_FILE.write_text(json.dumps(history[-200:], indent=2), encoding="utf-8")
 
 
-def prepare_symbol_context(feed: MarketDataFeed, news_feed: YahooNewsFeed, symbol: str) -> dict:
+def prepare_symbol_context(feed: MarketDataFeed, news_feed: NewsFeed, symbol: str) -> dict:
     """Recupera dati/indicatori/notizie e costruisce il prompt base per un simbolo — nessuna chiamata LLM."""
     raw_df = feed.fetch_ohlcv(symbol=symbol)
     enriched_df = feed.add_indicators(raw_df)
@@ -171,6 +171,7 @@ def decide_ensemble(ctx: dict, brain: QwenBrain, analysts: dict) -> dict:
     con `confidence_breakdown` (accordo tra gli analisti + confluenza tecnica
     indipendente + qualita' R:R) — vedi core/confidence.py.
     """
+    analysts = active_analysts(analysts, has_news=bool(ctx["news_items"]))
     persona_signals = collect_persona_signals(ctx["base_prompt"], analysts)
     if not persona_signals:
         return decide(ctx, brain, two_phase=True)
@@ -178,6 +179,7 @@ def decide_ensemble(ctx: dict, brain: QwenBrain, analysts: dict) -> dict:
     signal = judge_signal(
         brain, persona_signals, symbol=ctx["symbol"], market_payload=ctx["market_payload"],
         news_items=ctx["news_items"], htf_trend=ctx["htf_trend"],
+        expected_analysts=len(analysts),
     )
 
     entry_price = ctx["market_payload"]["indicators"]["last_close"]
@@ -228,7 +230,8 @@ def run_multi_asset_analysis(progress_callback=None, deep_dive_top_n: int = 2) -
     feed.connect()
     brain = build_judge()
     analysts = build_analysts()
-    news_feed = YahooNewsFeed()
+    # La dashboard non invia ordini: le notizie mock sono ammesse, ma il default resta "none".
+    news_feed = build_news_feed(settings.news_provider, dry_run=True)
 
     total_steps = len(settings.symbols) + deep_dive_top_n
     step = 0
@@ -505,14 +508,14 @@ def resolve_pending_outcomes(feed: MarketDataFeed, history: list) -> int:
             entry["outcome"] = "PENDING"  # ancora dentro l'orizzonte di osservazione
             continue
 
-        risk_distance = abs(entry_price - sl)
-        pip_size = pip_size_for_symbol(symbol)
-        realized = (exit_price - entry_price) if entry["action"] == "BUY" else (entry_price - exit_price)
+        res = realized_result(entry["action"], entry_price, exit_price, sl,
+                              pip_size_for_symbol(symbol), settings.cost_pips)
 
         entry["outcome"] = outcome
         entry["exit_price"] = exit_price
-        entry["pips"] = round(realized / pip_size, 1) if pip_size else None
-        entry["r_multiple"] = round(realized / risk_distance, 3) if risk_distance > 0 else None
+        entry["pips"] = res["pips"]  # al netto dei costi (COST_PIPS)
+        entry["r_multiple"] = res["r_multiple"]  # al netto dei costi
+        entry["r_multiple_gross"] = res["r_multiple_gross"]
         entry["resolved_at"] = now.isoformat()
         resolved_count += 1
 

@@ -56,5 +56,17 @@ class Settings:
     loop_interval_seconds: int = int(os.getenv("LOOP_INTERVAL_SECONDS", "900"))
     dry_run: bool = _get_bool("DRY_RUN", True)
 
+    # --- Notizie ---
+    # "none" (default): nessuna notizia, analista macro escluso.
+    # "mock": notizie statiche inventate, consentite solo con DRY_RUN=true.
+    news_provider: str = os.getenv("NEWS_PROVIDER", "none")
+
+    # --- Costi e limiti di portafoglio ---
+    cost_pips: float = float(os.getenv("COST_PIPS", "1.0"))  # spread+commissioni+slippage, andata e ritorno
+    max_open_positions: int = int(os.getenv("MAX_OPEN_POSITIONS", "3"))
+    max_currency_exposure: int = int(os.getenv("MAX_CURRENCY_EXPOSURE", "1"))  # posizioni nette per valuta
+    daily_loss_limit_pct: float = float(os.getenv("DAILY_LOSS_LIMIT_PCT", "3.0"))
+    magic_number: int = int(os.getenv("MAGIC_NUMBER", "990011"))
+
 
 settings = Settings()

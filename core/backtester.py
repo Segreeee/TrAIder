@@ -11,8 +11,10 @@ Limiti noti (MVP, dichiarati esplicitamente per non generare falsa fiducia):
 - Ogni punto campionato costa 1-2 chiamate LLM: il backtest campiona a
   intervalli (`stride`) invece che su ogni candela, per restare sostenibile
   in tempo/costo.
-- La simulazione dell'esito e' un semplice walk-forward su TP/SL: non modella
-  spread, slippage, commissioni ne' rientri parziali.
+- La simulazione dell'esito e' un semplice walk-forward su TP/SL senza
+  rientri parziali. Spread, commissioni e slippage sono modellati come un
+  costo fisso in pip per operazione (andata e ritorno, `cost_pips`, default
+  COST_PIPS): con stop di pochi pip pesano una parte grande del rischio.
 """
 import logging
 from dataclasses import asdict, dataclass
@@ -49,9 +51,32 @@ class BacktestTrade:
     lot_size: Optional[float]
     outcome: str  # "TP", "SL", "TIMEOUT", "HOLD"
     exit_price: Optional[float]
-    pips: Optional[float]
-    r_multiple: Optional[float]
+    pips: Optional[float]  # al netto dei costi
+    r_multiple: Optional[float]  # al netto dei costi
     reasoning: str
+    r_multiple_gross: Optional[float] = None  # prima dei costi, per confronto
+
+
+def realized_result(
+    action: str, entry_price: float, exit_price: float, stop_loss_price: float,
+    pip_size: float, cost_pips: float,
+) -> dict:
+    """
+    Risultato di un'operazione chiusa: pip netti, R netto e R lordo.
+    Il costo (spread + commissioni + slippage, andata e ritorno) si sottrae
+    sempre, sia sui guadagni sia sulle perdite. R e' misurato sulla distanza
+    tra ingresso e stop.
+    """
+    realized = (exit_price - entry_price) if action == "BUY" else (entry_price - exit_price)
+    cost = cost_pips * pip_size
+    risk_distance = abs(entry_price - stop_loss_price)
+    if risk_distance <= 0:
+        return {"pips": round((realized - cost) / pip_size, 1), "r_multiple": None, "r_multiple_gross": None}
+    return {
+        "pips": round((realized - cost) / pip_size, 1),
+        "r_multiple": round((realized - cost) / risk_distance, 3),
+        "r_multiple_gross": round(realized / risk_distance, 3),
+    }
 
 
 def simulate_outcome(action: str, tp: float, sl: float, future_df: pd.DataFrame) -> tuple[str, Optional[float]]:
@@ -86,6 +111,7 @@ def run_backtest(
     two_phase: bool = False,
     max_signals: Optional[int] = None,
     progress_callback=None,
+    cost_pips: Optional[float] = None,
 ) -> list[BacktestTrade]:
     """
     Esegue un backtest walk-forward su dati storici reali MT5.
@@ -95,7 +121,11 @@ def run_backtest(
     - two_phase: se True replica la pipeline live a due passi (analisi libera
       + verdetto); piu' lento e costoso, ma piu' fedele al comportamento reale.
     - max_signals: tetto di sicurezza sul numero di punti valutati.
+    - cost_pips: costo per operazione in pip (andata e ritorno); default COST_PIPS.
     """
+    if cost_pips is None:
+        from config.settings import settings
+        cost_pips = settings.cost_pips
     feed = MarketDataFeed()
     feed.connect()
     try:
@@ -176,18 +206,17 @@ def run_backtest(
             signal["action"], signal["take_profit_price"], signal["stop_loss_price"], future_df,
         )
 
-        risk_distance = abs(entry_price - signal["stop_loss_price"])
-        pips = r_multiple = None
-        if exit_price is not None and risk_distance > 0:
-            realized = (exit_price - entry_price) if signal["action"] == "BUY" else (entry_price - exit_price)
-            pips = round(realized / pip_size, 1)
-            r_multiple = round(realized / risk_distance, 3)
+        pips = r_multiple = r_gross = None
+        if exit_price is not None:
+            res = realized_result(signal["action"], entry_price, exit_price, signal["stop_loss_price"],
+                                  pip_size, cost_pips)
+            pips, r_multiple, r_gross = res["pips"], res["r_multiple"], res["r_multiple_gross"]
 
         trades.append(BacktestTrade(
             timestamp=ts, symbol=symbol, action=signal["action"], confidence=signal["confidence_percentage"],
             entry_price=entry_price, take_profit=signal["take_profit_price"], stop_loss=signal["stop_loss_price"],
             lot_size=lot_size, outcome=outcome, exit_price=exit_price, pips=pips, r_multiple=r_multiple,
-            reasoning=signal["reasoning"],
+            reasoning=signal["reasoning"], r_multiple_gross=r_gross,
         ))
 
     return trades
@@ -201,6 +230,7 @@ def summarize(trades: list[BacktestTrade]) -> dict:
     timeouts = [t for t in actionable if t.outcome == "TIMEOUT"]
     r_values = [t.r_multiple for t in actionable if t.r_multiple is not None]
     total_r = sum(r_values)
+    total_r_gross = sum(t.r_multiple_gross for t in actionable if t.r_multiple_gross is not None)
 
     return {
         "total_signals_evaluated": len(trades),
@@ -210,7 +240,8 @@ def summarize(trades: list[BacktestTrade]) -> dict:
         "losses": len(losses),
         "timeouts": len(timeouts),
         "win_rate_pct": round(len(wins) / len(actionable) * 100, 1) if actionable else 0.0,
-        "total_r": round(total_r, 2),
+        "total_r": round(total_r, 2),  # al netto dei costi
+        "total_r_gross": round(total_r_gross, 2),
         "avg_r_per_trade": round(total_r / len(actionable), 3) if actionable else 0.0,
     }
 
