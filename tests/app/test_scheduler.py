@@ -119,3 +119,49 @@ def test_finnhub_provider_composes_finnhub(tmp_path):
 def test_mt5_init_kwargs_from_settings():
     cfg = Settings(_env_file=None, mt5_login="501", mt5_password="pw", mt5_server="Demo")
     assert mt5_init_kwargs(cfg) == {"login": 501, "password": "pw", "server": "Demo"}
+
+
+def test_ollama_digest_reads_api_tags():
+    import io
+    import json
+    from app.compose import ollama_digest
+    payload = {"models": [{"name": "gemma3:12b", "model": "gemma3:12b", "digest": "abc123"}]}
+    urls = []
+
+    def opener(req, timeout):
+        urls.append(req.full_url)
+        return io.BytesIO(json.dumps(payload).encode())
+
+    assert ollama_digest("http://localhost:11434/v1", "gemma3:12b", opener) == "abc123"
+    assert urls == ["http://localhost:11434/api/tags"]
+    import pytest
+    with pytest.raises(RuntimeError, match="ollama pull"):
+        ollama_digest("http://localhost:11434/v1", "qwen3:8b", opener)
+
+
+def test_cycle_runs_every_symbol_then_resolves(monkeypatch, caplog):
+    import app.compose as compose
+    calls = []
+    monkeypatch.setattr(compose, "run_once",
+                        lambda symbol, close, ports, cfg, code_version: calls.append(("run", symbol, close, code_version)))
+
+    def resolve(store, market, now):
+        calls.append(("resolve", now))
+        raise RuntimeError("barre non disponibili")
+
+    monkeypatch.setattr(compose, "resolve_pending", resolve)
+    cfg = Settings(_env_file=None, symbols="EURUSD,GBPUSD")
+    from types import SimpleNamespace
+    cycle = compose.make_cycle(cfg, ports=SimpleNamespace(store=None, market=None), code_version="abc", clock=lambda: T0 + timedelta(seconds=10))
+    cycle(T0)  # l'errore della risoluzione è registrato, non propagato
+    assert calls == [("run", "EURUSD", T0, "abc"), ("run", "GBPUSD", T0, "abc"), ("resolve", T0 + timedelta(seconds=10))]
+    assert "barre non disponibili" in caplog.text
+
+
+def test_main_rejects_invalid_config_before_touching_mt5(monkeypatch, caplog):
+    import main
+    monkeypatch.setenv("RISK_PER_TRADE_PCT", "99")  # fuori da (0, 5]
+    monkeypatch.setattr(main, "setup_logging", lambda: None)
+    assert main.main([]) == 1
+    messages = " ".join(r.getMessage() for r in caplog.records)
+    assert "risk_per_trade_pct" in messages and "99" not in messages  # nomi dei campi, mai i valori

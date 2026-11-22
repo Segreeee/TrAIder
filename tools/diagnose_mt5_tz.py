@@ -12,22 +12,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.compose import mt5_init_kwargs  # noqa: E402
 from app.config import Settings  # noqa: E402
 from domain.clock import server_offset_hours  # noqa: E402
 
 TF_MINUTES = 15
 
 
-def init_kwargs(cfg: Settings) -> dict:
-    """Argomenti per mt5.initialize; vuoto se il .env non ha credenziali (si usa il login del terminale)."""
-    kwargs = {}
-    if cfg.mt5_path:
-        kwargs["path"] = cfg.mt5_path
-    if cfg.mt5_login:
-        kwargs["login"] = int(cfg.mt5_login)
-        kwargs["password"] = cfg.mt5_password.get_secret_value()
-        kwargs["server"] = cfg.mt5_server
-    return kwargs
+init_kwargs = mt5_init_kwargs  # stessa regola del demone (app.compose)
 
 
 def main(argv: list[str], mt5, cfg: Settings) -> int:
