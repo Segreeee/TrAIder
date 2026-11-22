@@ -7,6 +7,45 @@ import pandas as pd
 from ports import CandidateRecord, LlmResponse, NewsItem, Outcome
 
 
+class FakeMt5:
+    """Sostituto del modulo MetaTrader5: barre nell'ORA DEL SERVER (UTC + offset_hours), come il vero MT5.
+    Registra ogni chiamata a copy_rates_from_pos come (start, count)."""
+    TIMEFRAME_M15 = 15
+    TIMEFRAME_H1 = 16385
+
+    _TF_SECONDS = {15: 900, 16385: 3600}
+
+    def __init__(self, now: datetime, offset_hours: int = 2, ticks: dict | None = None, market_open: bool = True):
+        self.now, self.offset, self.market_open = now, offset_hours, market_open
+        self.ticks = ticks or {"EURUSD": (1.10000, 1.10008), "EURJPY": (160.000, 160.020), "EURGBP": (0.85000, 0.85010)}
+        self.rate_calls: list[tuple[int, int]] = []
+
+    def symbol_select(self, symbol, enable):
+        return True
+
+    def copy_rates_from_pos(self, symbol, tf, start, count):
+        self.rate_calls.append((start, count))
+        step = self._TF_SECONDS[tf]
+        server_now = int(self.now.timestamp()) + self.offset * 3600
+        if not self.market_open:
+            server_now -= 3 * 86400  # ultima barra di venerdì: vecchia rispetto ad adesso
+        forming = server_now // step * step
+        opens = forming - step * (start + np.arange(count)[::-1])
+        rng = np.random.default_rng(len(self.rate_calls))
+        close = 1.10 + np.cumsum(rng.normal(0, 0.0005, count))
+        dtype = [("time", "i8"), ("open", "f8"), ("high", "f8"), ("low", "f8"),
+                 ("close", "f8"), ("tick_volume", "i8"), ("spread", "i4"), ("real_volume", "i8")]
+        rows = [(int(t), c, c + 0.0004, c - 0.0004, c, 100, 7, 0) for t, c in zip(opens, close)]
+        return np.array(rows, dtype=dtype)
+
+    def symbol_info_tick(self, symbol):
+        bid, ask = self.ticks[symbol]
+        return type("Tick", (), {"bid": bid, "ask": ask, "time": int(self.now.timestamp())})()
+
+    def last_error(self):
+        return (0, "ok")
+
+
 class FakeLlm:
     """Risposte scriptate in ordine; un'eccezione nello script simula un errore di trasporto."""
 
