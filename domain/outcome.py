@@ -26,21 +26,26 @@ def realized_result(
     }
 
 
-def simulate_outcome(action: str, tp: float, sl: float, future_df: pd.DataFrame) -> tuple[str, Optional[float]]:
-    """
-    Cammina in avanti tra le candele successive: primo tra TP/SL toccato vince
-    (SL se ambigui nella stessa candela, scelta prudente).
-    """
-    for _, row in future_df.iterrows():
-        high, low = row["high"], row["low"]
+def first_hit(action: str, tp: float, sl: float, future_df: pd.DataFrame) -> Optional[tuple[str, float, int]]:
+    """(esito, prezzo, posizione della barra) del primo tra TP/SL toccato; SL se ambigui nella stessa
+    candela (scelta prudente). None se nessuno dei due è toccato."""
+    for i, (high, low) in enumerate(zip(future_df["high"], future_df["low"])):
         if action == "BUY":
             hit_sl, hit_tp = low <= sl, high >= tp
         else:  # SELL
             hit_sl, hit_tp = high >= sl, low <= tp
         if hit_sl:
-            return "SL", sl
+            return "SL", sl, i
         if hit_tp:
-            return "TP", tp
+            return "TP", tp, i
+    return None
+
+
+def simulate_outcome(action: str, tp: float, sl: float, future_df: pd.DataFrame) -> tuple[str, Optional[float]]:
+    """Primo tra TP/SL toccato tra le candele successive, altrimenti TIMEOUT all'ultima chiusura."""
+    hit = first_hit(action, tp, sl, future_df)
+    if hit is not None:
+        return hit[0], hit[1]
     if len(future_df) == 0:
         return "TIMEOUT", None
     return "TIMEOUT", float(future_df.iloc[-1]["close"])
