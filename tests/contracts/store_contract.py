@@ -70,6 +70,16 @@ def check_pending_roundtrip_keeps_the_record(make_store):
     assert store.pending_candidates() == [(cid, rec)]
 
 
-ALL = [check_begin_cycle_idempotent, check_candidate_unique_per_variant, check_outcome_recorded_once,
+def check_finish_cycle_once(make_store):
+    store = make_store()
+    cycle = store.begin_cycle("EURUSD", CLOSE)
+    store.finish_cycle(cycle, "done", input_json='{"a": 1}', code_version="abc", config_hash="h")
+    with pytest.raises(ValueError):
+        store.finish_cycle(cycle, "error", error="seconda chiusura")
+    with pytest.raises(ValueError):
+        store.finish_cycle(store.begin_cycle("GBPUSD", CLOSE), "forse")
+
+
+ALL = [check_finish_cycle_once,check_begin_cycle_idempotent, check_candidate_unique_per_variant, check_outcome_recorded_once,
        check_pending_excludes_resolved, check_llm_call_and_execution_are_kept,
        check_pending_roundtrip_keeps_the_record]
