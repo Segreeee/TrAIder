@@ -54,7 +54,8 @@ def test_ev_zero_at_p_star(d_sl, d_tp, cost):
 
 @given(d_sl=dist, d_tp=dist, cost=costs, a=prob, b=prob)
 def test_ev_increasing_in_p(d_sl, d_tp, cost, a, b):
-    assume(cost < d_tp and a < b)
+    # b − a ≥ 1e-6: con differenze subnormali (1e-308) le due EV coincidono in virgola mobile
+    assume(cost < d_tp and b - a >= 1e-6)
     pay = payoff(d_sl, d_tp, cost)
     assert ev(a, pay) < ev(b, pay)
 
