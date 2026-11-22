@@ -5,7 +5,8 @@ import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
-from domain.probability import Payoff, beta_posterior, ev, ev5, p0, payoff
+from domain.probability import Payoff, beta_posterior, ev, ev5, ev_gate, kelly_risk_pct, p0, payoff
+from domain.types import HoldReason
 
 # --- casi noti --------------------------------------------------------------- #
 
@@ -106,3 +107,52 @@ def test_ev5_le_ev_mean(p, w, l, d_sl, d_tp, cost):
 def test_invalid_beta_inputs_raise(p, kappa, w, l):
     with pytest.raises(ValueError):
         beta_posterior(p, kappa, w, l)
+
+
+# --- P4.03: Kelly frazionario, gate EV_5, confidenza ------------------------- #
+
+
+def test_kelly_known_case():
+    # p 0.5, W 1.4, L 1.1: f* = 0.5 − 0.5·1.1/1.4 = 0.10714; λ 0.25 -> 2.68%
+    assert kelly_risk_pct(0.5, payoff(10, 15, 1), lam=0.25, cap=5.0) == pytest.approx(2.6786, abs=1e-4)
+    assert kelly_risk_pct(0.5, payoff(10, 15, 1), lam=0.25, cap=1.0) == 1.0
+
+
+def test_kelly_zero_when_p_le_p_star():
+    pay = payoff(10, 15, 1)
+    assert kelly_risk_pct(pay.p_star, pay, cap=1.0) == 0.0
+    assert kelly_risk_pct(pay.p_star - 0.05, pay, cap=1.0) == 0.0
+
+
+@given(p=prob, d_sl=dist, d_tp=dist, cost=costs, cap=st.floats(min_value=0.01, max_value=5))
+def test_kelly_risk_never_exceeds_cap(p, d_sl, d_tp, cost, cap):
+    assume(cost < d_tp)
+    assert 0.0 <= kelly_risk_pct(p, payoff(d_sl, d_tp, cost), cap=cap) <= cap
+
+
+@given(ev5_value=st.floats(min_value=-5, max_value=5), ev_min=st.floats(min_value=-1, max_value=1))
+def test_gate_never_opens_when_ev5_le_ev_min(ev5_value, ev_min):
+    ok, reason = ev_gate(ev5_value, ev_min)
+    if ev5_value <= ev_min:
+        assert not ok and reason is HoldReason.GATE_EV
+    else:
+        assert ok and reason is None
+
+
+@given(p=st.floats(min_value=0.05, max_value=0.95), d_sl=dist, d_tp=dist, cost=st.floats(min_value=0.01, max_value=20))
+def test_beta_zero_never_opens_with_costs(p, d_sl, d_tp, cost):
+    # Q-004: senza dati (p = p0) e con costo > 0 il gate resta chiuso, sempre.
+    assume(cost < d_tp)
+    post = beta_posterior(p0(d_sl, d_tp), 20, 0, 0)
+    assert not ev_gate(ev5(post, payoff(d_sl, d_tp, cost)), 0.0)[0]
+
+
+def test_confidence_low_without_data_high_with_edge():
+    pay = payoff(10, 15, 1)  # p* = 0.44
+    assert beta_posterior(0.4, 20, 0, 0).prob_above(pay.p_star) < 0.5
+    assert beta_posterior(0.4, 20, 550, 450).prob_above(pay.p_star) > 0.99
+
+
+@given(p=st.floats(min_value=0.05, max_value=0.95), w=st.integers(0, 500), l=st.integers(0, 500), x=prob)
+def test_confidence_is_a_probability(p, w, l, x):
+    assert 0.0 <= beta_posterior(p, 20, w, l).prob_above(x) <= 1.0
