@@ -75,6 +75,6 @@ def test_order_send_called_iff_double_consent(dry_run, allow_live):
 
 
 def test_settings_allow_live_trading_defaults_false():
+    # Sostituito da test_defaults_are_safe quando la configurazione passa a pydantic-settings (P3.21).
     from config.settings import Settings
-    assert Settings.__dataclass_fields__["allow_live_trading"].default is False or \
-        Settings().allow_live_trading is False
+    assert Settings().allow_live_trading is False

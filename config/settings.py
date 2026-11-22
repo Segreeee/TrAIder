@@ -55,6 +55,8 @@ class Settings:
     risk_per_trade_pct: float = float(os.getenv("RISK_PER_TRADE_PCT", "1.0"))
     loop_interval_seconds: int = int(os.getenv("LOOP_INTERVAL_SECONDS", "900"))
     dry_run: bool = _get_bool("DRY_RUN", True)
+    # Secondo consenso per gli ordini reali: serve anche DRY_RUN=false.
+    allow_live_trading: bool = _get_bool("ALLOW_LIVE_TRADING", False)
 
     # --- Notizie ---
     # "none" (default): nessuna notizia, analista macro escluso.

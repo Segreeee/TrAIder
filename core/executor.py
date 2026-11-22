@@ -28,8 +28,10 @@ class ExecutorError(Exception):
 
 
 class OrderExecutor:
-    def __init__(self, dry_run: bool = True):
+    def __init__(self, dry_run: bool = True, allow_live_trading: bool = False):
+        # Doppio consenso: un ordine reale parte solo con dry_run=False E allow_live_trading=True.
         self.dry_run = dry_run
+        self.allow_live_trading = allow_live_trading
 
     def execute(self, symbol: str, signal: TradeSignal) -> Optional[dict]:
         """
@@ -41,7 +43,7 @@ class OrderExecutor:
             self._print_order_summary(symbol, signal, status="SKIPPED (HOLD)")
             return None
 
-        if self.dry_run or mt5 is None:
+        if self.dry_run or not self.allow_live_trading or mt5 is None:
             self._print_order_summary(symbol, signal, status="SIMULATED (dry-run)")
             return {"status": "simulated"}
 

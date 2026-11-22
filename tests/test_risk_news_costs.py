@@ -221,7 +221,8 @@ class ExecutorRealPriceTest(unittest.TestCase):
         original = ex.mt5
         ex.mt5 = FakeMt5()
         try:
-            out = ex.OrderExecutor(dry_run=False).execute("EURUSD", signal)
+            # Doppio consenso (P3.02): senza il secondo flag l'executor non arriverebbe al controllo R:R.
+            out = ex.OrderExecutor(dry_run=False, allow_live_trading=True).execute("EURUSD", signal)
         finally:
             ex.mt5 = original
         self.assertEqual(out["status"], "skipped")

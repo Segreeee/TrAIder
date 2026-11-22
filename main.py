@@ -188,7 +188,7 @@ def main() -> None:
     data_feed = MarketDataFeed()
     brain = build_judge()
     analysts = build_analysts()
-    executor = OrderExecutor(dry_run=settings.dry_run)
+    executor = OrderExecutor(dry_run=settings.dry_run, allow_live_trading=settings.allow_live_trading)
 
     try:
         data_feed.connect()
