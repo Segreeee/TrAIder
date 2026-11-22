@@ -1,15 +1,24 @@
 # Azioni dell'utente — guida passo passo
 
-Aggiornata al 2026-11-22, dopo P3.27. Per ogni voce: **cosa**, **dove**, **come**, e cosa mandarmi alla fine.
+Aggiornata al 2026-11-22, dopo P3.27, Q-005 e T-010. Per ogni voce: **cosa**, **dove**, **come**, e cosa mandarmi alla fine.
 Le voci sono in ordine: fai prima il blocco A, poi il B. I blocchi C e D arrivano più avanti, te li ricorderò io.
 
-Legenda: 💬 = basta rispondermi in chat · 🖥️ = serve un'azione sul tuo PC.
+Legenda: 💬 = basta rispondermi in chat · 🖥️ = serve un'azione sul tuo PC · ✅ = fatto.
+
+**Terminale:** in VS Code il terminale è Git Bash. Scrivi i percorsi con `/`, non con `\`
+(Bash cancella le barre rovesciate: `.venv\Scripts\python` diventa `.venvScriptspython`).
+Se il `.venv` è attivo (vedi `(.venv)` nel prompt) basta scrivere `python`.
 
 ---
 
 ## A. Adesso (sbloccano il lavoro)
 
-### A1. 💬 Rispondi a tre decisioni
+### A1. ✅ Tre decisioni (fatto il 2026-11-22)
+
+Hai scelto: **Q-005 → a** (già applicata), **T-010 → correggi** (già applicata), **Finnhub → uso privato** (sblocca P3.18, vedi B3).
+
+<details><summary>Le domande originali</summary>
+
 
 **Dove:** in questa chat. **Come:** una riga sola, per esempio:
 
@@ -20,6 +29,8 @@ Legenda: 💬 = basta rispondermi in chat · 🖥️ = serve un'azione sul tuo P
 | **Q-005** | Quando il modello statistico può "accendersi"? La regola attuale si accende per caso anche su dati senza informazione (4 volte su 10 nelle prove) | **a** = solo se anche la stima pessimistica (intervallo al 90%) è migliore della base · **b** = solo se migliora di almeno 0.01 · **c** = test statistico formale | **a** |
 | **T-010** | Nei BUY lo spread viene contato due volte (≈ 0.1 R a sfavore dei BUY), nei SELL no | **correggi** = lo conto una volta sola per entrambi · **lascia** = resta prudente ma asimmetrico | **correggi** |
 | **Finnhub** | I termini del piano gratuito vietano di condividere dati e "risultati derivati". Se pubblichi il progetto, i risultati dell'analista macro potrebbero rientrarci | **salta** = niente notizie, la variante "macro" risulta non disponibile · **privato** = uso solo personale, pubblichi solo metriche aggregate · **chiedo** = scrivi tu a Finnhub per un'autorizzazione | **salta** (o **chiedo** se vuoi il macro) |
+
+</details>
 
 Se scegli **chiedo** per Finnhub: vai su https://finnhub.io, usa il modulo/indirizzo di contatto indicato sul sito e chiedi il permesso di usare le notizie per un progetto di portfolio pubblico che mostra solo metriche aggregate. Dimmi poi la risposta.
 
@@ -47,7 +58,7 @@ Io non posso modificarlo (le regole di sicurezza me lo impediscono), quindi lo f
 
 **Verifica (facoltativa):** nel terminale di VS Code (menu **Terminale → Nuovo terminale**) incolla:
 ```
-.venv\Scripts\python -c "from app.config import Settings; Settings(); print('configurazione valida')"
+python -c "from app.config import Settings; Settings(); print('configurazione valida')"
 ```
 Se stampa `configurazione valida` hai finito. Se stampa un errore, copiamelo: contiene solo i nomi dei campi, non i valori, ma controlla comunque prima di incollarlo.
 
@@ -77,7 +88,7 @@ Se non sei sicuro del valore, scrivimi tipo di conto e cosa vedi sul sito, e lo 
 2. In VS Code apri il terminale: menu **Terminale → Nuovo terminale**.
 3. Incolla ed esegui:
    ```
-   .venv\Scripts\python tools\diagnose_mt5_tz.py
+   python tools/diagnose_mt5_tz.py
    ```
 4. Vedrai tre righe come queste:
    ```
@@ -100,6 +111,15 @@ Quando avrai scelto un servizio (per esempio uno compatibile con l'API OpenAI), 
 ### B2. 💬 Due scelte di pulizia
 - **T-002:** tenere o eliminare `YahooNewsFeed` (codice vecchio, oggi inutilizzato). Consiglio: eliminare.
 - **T-005:** le regole di sicurezza (`.claude/settings.json`) oggi valgono solo su questo PC perché la cartella `.claude/` non è nel repository. Vuoi che le versioniamo? Consiglio: sì, sono una garanzia visibile anche nel portfolio.
+
+---
+
+### B3. 🖥️ Chiave Finnhub (dopo P3.18)
+Hai scelto l'uso privato. Quando l'adattatore Finnhub sarà pronto (P3.18) ti chiederò di:
+1. registrarti su https://finnhub.io (piano gratuito) e copiare la **API key** dalla dashboard;
+2. aggiungere nel `.env` le righe `NEWS_PROVIDER=finnhub` e `FINNHUB_API_KEY=<la tua chiave>`.
+La chiave va solo nel `.env`, mai in chat. Promemoria della scelta: i titoli delle notizie restano in `data/`
+(ignorata da git) e in pubblico mostrerai solo metriche aggregate.
 
 ---
 
