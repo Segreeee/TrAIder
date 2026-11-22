@@ -1,5 +1,6 @@
 """Adattatori finti delle porte: deterministici, senza rete né MT5. Usati da contratti e test d'integrazione."""
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -19,6 +20,8 @@ class FakeMt5:
         self.now, self.offset, self.market_open = now, offset_hours, market_open
         self.ticks = ticks or {"EURUSD": (1.10000, 1.10008), "EURJPY": (160.000, 160.020), "EURGBP": (0.85000, 0.85010)}
         self.rate_calls: list[tuple[int, int]] = []
+        self.sent, self.open_positions, self.deals = [], [], []
+        self.equity, self.retcode = 1000.0, self.TRADE_RETCODE_DONE
 
     def symbol_select(self, symbol, enable):
         return True
@@ -40,10 +43,31 @@ class FakeMt5:
 
     def symbol_info_tick(self, symbol):
         bid, ask = self.ticks[symbol]
-        return type("Tick", (), {"bid": bid, "ask": ask, "time": int(self.now.timestamp())})()
+        return SimpleNamespace(bid=bid, ask=ask, time=int(self.now.timestamp()))
 
     def last_error(self):
         return (0, "ok")
+
+    # --- lato conto e ordini: le richieste finiscono in self.sent, nessun terminale coinvolto --- #
+    ORDER_TYPE_BUY, ORDER_TYPE_SELL, TRADE_ACTION_DEAL = 0, 1, 1
+    ORDER_TIME_GTC, ORDER_FILLING_IOC, TRADE_RETCODE_DONE = 0, 1, 10009
+
+    def order_send(self, request):
+        self.sent.append(request)
+        if self.retcode == self.TRADE_RETCODE_DONE:
+            self.open_positions.append(SimpleNamespace(
+                symbol=request["symbol"], type=request["type"], volume=request["volume"], price_open=request["price"],
+                sl=request["sl"], tp=request["tp"], magic=request["magic"], ticket=len(self.sent), profit=0.0))
+        return SimpleNamespace(retcode=self.retcode, price=request["price"], order=len(self.sent), comment="fake")
+
+    def positions_get(self):
+        return list(self.open_positions)
+
+    def account_info(self):
+        return SimpleNamespace(equity=self.equity)
+
+    def history_deals_get(self, start, end):
+        return list(self.deals)
 
 
 class FakeLlm:
