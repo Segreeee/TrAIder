@@ -1,44 +1,139 @@
-# Azioni dell'utente
+# Azioni dell'utente — guida passo passo
 
-Cosa resta da fare a te, in ordine di urgenza. Aggiornato al 2026-11-22, dopo P3.27.
-Dettagli di ogni voce in PROGRESS.md (passi P*) e DECISIONS.md (Q-*, T-*).
+Aggiornata al 2026-11-22, dopo P3.27. Per ogni voce: **cosa**, **dove**, **come**, e cosa mandarmi alla fine.
+Le voci sono in ordine: fai prima il blocco A, poi il B. I blocchi C e D arrivano più avanti, te li ricorderò io.
 
-## 1. Decisioni che servono adesso
+Legenda: 💬 = basta rispondermi in chat · 🖥️ = serve un'azione sul tuo PC.
 
-| Voce | Cosa decidere | Mia raccomandazione |
+---
+
+## A. Adesso (sbloccano il lavoro)
+
+### A1. 💬 Rispondi a tre decisioni
+
+**Dove:** in questa chat. **Come:** una riga sola, per esempio:
+
+> Q-005: a · T-010: correggi · Finnhub: salta
+
+| Codice | La domanda in parole semplici | Opzioni | Consiglio |
+|---|---|---|---|
+| **Q-005** | Quando il modello statistico può "accendersi"? La regola attuale si accende per caso anche su dati senza informazione (4 volte su 10 nelle prove) | **a** = solo se anche la stima pessimistica (intervallo al 90%) è migliore della base · **b** = solo se migliora di almeno 0.01 · **c** = test statistico formale | **a** |
+| **T-010** | Nei BUY lo spread viene contato due volte (≈ 0.1 R a sfavore dei BUY), nei SELL no | **correggi** = lo conto una volta sola per entrambi · **lascia** = resta prudente ma asimmetrico | **correggi** |
+| **Finnhub** | I termini del piano gratuito vietano di condividere dati e "risultati derivati". Se pubblichi il progetto, i risultati dell'analista macro potrebbero rientrarci | **salta** = niente notizie, la variante "macro" risulta non disponibile · **privato** = uso solo personale, pubblichi solo metriche aggregate · **chiedo** = scrivi tu a Finnhub per un'autorizzazione | **salta** (o **chiedo** se vuoi il macro) |
+
+Se scegli **chiedo** per Finnhub: vai su https://finnhub.io, usa il modulo/indirizzo di contatto indicato sul sito e chiedi il permesso di usare le notizie per un progetto di portfolio pubblico che mostra solo metriche aggregate. Dimmi poi la risposta.
+
+### A2. 🖥️ Aggiorna il file `.env`
+
+Io non posso modificarlo (le regole di sicurezza me lo impediscono), quindi lo fai tu.
+
+**Dove:** in VS Code, nella cartella del progetto, apri il file `.env` (è nella radice, accanto a `main.py`; se non lo vedi nella barra a sinistra, premi `Ctrl+P` e scrivi `.env`).
+
+**Come:**
+1. **Cancella** queste 5 righe (seleziona la riga e premi `Ctrl+Shift+K`):
+   ```
+   QWEN_API_KEY=...
+   QWEN_BASE_URL=...
+   QWEN_MODEL=...
+   SYMBOL=...
+   LOOP_INTERVAL_SECONDS=...
+   ```
+   Le altre righe che hai già (`MT5_*`, `SYMBOLS`, `TIMEFRAME`, `CANDLES_COUNT`, `ACCOUNT_BALANCE`, `RISK_PER_TRADE_PCT`, `DRY_RUN`) sono già valide: lasciale.
+2. **Aggiungi** in fondo questa riga, con il numero giusto per il tuo conto (vedi A3):
+   ```
+   COMMISSION_EUR_PER_LOT=
+   ```
+3. Salva con `Ctrl+S`.
+
+**Verifica (facoltativa):** nel terminale di VS Code (menu **Terminale → Nuovo terminale**) incolla:
+```
+.venv\Scripts\python -c "from app.config import Settings; Settings(); print('configurazione valida')"
+```
+Se stampa `configurazione valida` hai finito. Se stampa un errore, copiamelo: contiene solo i nomi dei campi, non i valori, ma controlla comunque prima di incollarlo.
+
+⚠️ Dopo questa modifica **non lanciare il vecchio `python main.py`**: senza le righe `QWEN_*` userebbe l'indirizzo remoto predefinito di Qwen. Il nuovo avvio arriva con P3.28.
+
+### A3. 🖥️ Trova la commissione del tuo conto demo
+
+**Cosa serve:** la commissione **andata e ritorno** per **1 lotto standard**, in **EUR**.
+
+**Dove guardare:**
+1. **Area clienti Pepperstone** (sito o app): nei dettagli del conto demo trovi il **tipo di conto**.
+   - **Standard**: di solito nessuna commissione → scrivi `COMMISSION_EUR_PER_LOT=0`.
+   - **Razor**: c'è una commissione per lotto → prendi il valore dalla pagina dei tipi di conto/costi di Pepperstone per i conti in EUR.
+2. Attenzione a come è espressa: se il sito la indica **per lato** (solo apertura), **raddoppiala** per avere andata e ritorno.
+3. Basta il valore del sito: il costo reale lo verificheremo più avanti, in P5.11, solo se deciderai di operare sul demo.
+
+Se non sei sicuro del valore, scrivimi tipo di conto e cosa vedi sul sito, e lo ricaviamo insieme. Non lo invento io.
+
+### A4. 🖥️ Verifica il fuso orario del server MT5 (P3.05)
+
+**Quando:** da **lunedì a venerdì**, con il mercato aperto. Oggi è domenica: il forex riapre domenica sera (ora italiana circa 23:00), ma meglio lunedì in orario europeo.
+
+**Dove:** sul PC dove gira MetaTrader 5.
+
+**Come:**
+1. Apri **MetaTrader 5** e verifica di essere collegato al **conto demo** (in basso a destra non deve esserci "Nessuna connessione").
+2. In VS Code apri il terminale: menu **Terminale → Nuovo terminale**.
+3. Incolla ed esegui:
+   ```
+   .venv\Scripts\python tools\diagnose_mt5_tz.py
+   ```
+4. Vedrai tre righe come queste:
+   ```
+   UTC adesso:               2026-11-23T09:07:12+00:00
+   Apertura barra (server):  2026-11-23 11:00:00
+   Scarto server - UTC:      +2 ore
+   ```
+5. **Mandami le tre righe** in chat.
+
+Lo script **legge solo dati**: non apre posizioni e non usa funzioni di trading.
+Se compare "Scarto non determinabile", il mercato è chiuso: riprova più tardi in un giorno feriale.
+
+---
+
+## B. Quando vuoi (non bloccano nulla)
+
+### B1. 💬 Fornitore LLM remoto per il giudice (Q-001)
+Quando avrai scelto un servizio (per esempio uno compatibile con l'API OpenAI), dimmi quale. Ti dirò quali 3 righe aggiungere al `.env` (`REMOTE_JUDGE_BASE_URL`, `REMOTE_JUDGE_MODEL`, `REMOTE_JUDGE_API_KEY`). La chiave la inserisci solo tu nel `.env`, mai in chat.
+
+### B2. 💬 Due scelte di pulizia
+- **T-002:** tenere o eliminare `YahooNewsFeed` (codice vecchio, oggi inutilizzato). Consiglio: eliminare.
+- **T-005:** le regole di sicurezza (`.claude/settings.json`) oggi valgono solo su questo PC perché la cartella `.claude/` non è nel repository. Vuoi che le versioniamo? Consiglio: sì, sono una garanzia visibile anche nel portfolio.
+
+---
+
+## C. Più avanti: te lo chiederò io al momento giusto
+
+Non devi fare nulla ora. Quando arriviamo al passo, ti scrivo la domanda precisa e tu rispondi in chat.
+
+| Passo | Cosa ti chiederò | Tipo |
 |---|---|---|
-| **Q-005** | Soglia di attivazione del modello logistico. La regola "BSS > 0 fuori campione" si attiva per caso con caratteristiche senza informazione in 4 semi su 10. Opzioni: (a) estremo inferiore di un IC bootstrap al 90% del BSS > 0; (b) soglia fissa, es. BSS ≥ 0.01; (c) test contro β = 0 | (a) |
-| **T-010** | Lo spread si conta due volte nei BUY (ingresso all'ask + spread dentro il costo c), circa 0.1 R a sfavore dei BUY; per i SELL l'uscita si controlla sul bid. Proposta: c senza spread quando le distanze partono dal prezzo di esecuzione, e uscite dei SELL controllate su bid + spread | correggere come proposto |
-| **P3.18 / T-008** | Finnhub: i piani sono solo per uso personale e vietano di condividere dati **o risultati derivati** senza autorizzazione scritta. Opzioni: uso privato con solo metriche aggregate pubbliche; chiedere l'autorizzazione; saltare il passo (la variante "solo macro" risulta non disponibile) | autorizzazione scritta o saltare, se il progetto sarà pubblico |
-| **Q-001** | Fornitore dell'API LLM remota per il giudice al 20%. Non blocca nulla: finché non scegli, solo giudice locale | — |
+| P3.29 | Confermare che un vecchio test cambia valore atteso (0.50 → 0.55 lotti, correzione del pip fisso) e che due test del vecchio "giudice decisore" vengono ritirati | 💬 |
+| P3.31 | Confermare la cancellazione del codice vecchio (`core/`, `config/settings.py`, `backtest.py`). Resta recuperabile da git | 💬 |
+| P5.01 | Leggere e approvare la "preregistrazione": quali metriche e soglie useremo, scritte **prima** di raccogliere dati | 💬 |
+| P5.08 | Scegliere il modello del giudice locale e scaricarlo: nel terminale `ollama pull <nome-modello>` | 🖥️ |
+| P5.10 | Avviare il programma in simulazione e programmarlo nell'**Utilità di pianificazione** di Windows. Ti darò le istruzioni passo passo | 🖥️ |
+| P5.11 | **Ordini sul conto demo:** solo se e quando lo decidi tu. Imposti tu nel `.env` i due flag del doppio consenso e me lo confermi in chat. Io non li tocco mai | 🖥️ + 💬 |
+| P6.03 | Confermare la rimozione della vecchia dashboard Streamlit e scegliere come vedere la nuova dal telefono (Tailscale o cartella sincronizzata) | 💬 |
 
-## 2. Prima di P3.28 (il nuovo programma legge la nuova configurazione)
+---
 
-1. **Aggiorna il tuo `.env`** (io non posso modificarlo):
-   - togli `QWEN_API_KEY`, `QWEN_BASE_URL`, `QWEN_MODEL`, `SYMBOL`, `LOOP_INTERVAL_SECONDS`;
-   - aggiungi `COMMISSION_EUR_PER_LOT=` con la commissione andata e ritorno per lotto standard del tuo conto demo Pepperstone (dalle specifiche del conto: Razor ha commissione, Standard di solito no). Senza, il costo stimato è solo spread + slippage;
-   - facoltativi, con default prudenti: `MAX_LOT` (1.0), `MIN_LOT` e `LOT_STEP` (0.01), `PRODUCTION_VARIANT` (v7-completo). Modello: `.env.example`.
-   - Dopo l'aggiornamento non lanciare il vecchio `main.py`: senza le righe `QWEN_*` ricadrebbe sull'indirizzo remoto predefinito di Qwen.
-2. **P3.05 — fuso orario del server MT5**, a mercato aperto (lun–ven), terminale MT5 acceso:
-   `.venv\Scripts\python tools\diagnose_mt5_tz.py`
-   Mandami l'output: confermo l'offset e chiudo T-007. Lo script legge solo dati, nessun ordine.
+## D. Prima di pubblicare su GitHub (Fase 7)
 
-## 3. Conferme durante le fasi successive
+### D1. 🖥️ Email "noreply" per i commit (T-003)
+Serve a non pubblicare la tua email personale nei commit.
+1. Vai su **github.com → foto profilo in alto a destra → Settings → Emails**.
+2. Spunta **"Keep my email addresses private"**.
+3. Copia l'indirizzo mostrato, del tipo `12345678+nomeutente@users.noreply.github.com`.
+4. Nel terminale di VS Code, nella cartella del progetto:
+   ```
+   git config user.email "12345678+nomeutente@users.noreply.github.com"
+   ```
+   (con il tuo indirizzo). Vale solo per questo progetto.
 
-| Passo | Cosa ti chiederò |
-|---|---|
-| P3.29 | Migrazione dei 30 test legacy: conferma che `test_normal_case_unchanged` passa da 0.50 a 0.55 lotti (correzione del pip fisso) e il ritiro dei 2 test del giudice decisore |
-| P3.31 | Cancellazione dei moduli legacy (`core/*`, `config/settings.py`, `backtest.py`) e dei vecchi test; restano recuperabili da git |
-| P5.01 | Approvare la preregistrazione (metriche, soglie, varianti) **prima** di raccogliere dati |
-| P5.08 | Scegliere il modello locale del giudice (famiglia diversa dagli analisti) e scaricarlo con `ollama pull` |
-| P5.10 | Avviare tu il demone in DRY_RUN con il broker simulato e configurare l'Utilità di pianificazione come supervisore |
-| P5.11 | **Ordini su conto demo:** imposti tu nel `.env` i due flag del doppio consenso e dai conferma esplicita in conversazione. Io non li tocco (e le regole deny lo impediscono) |
-| P6.03 | Rimozione di Streamlit e di `dashboard.py`; accesso alla dashboard dal telefono (Tailscale o cartella sincronizzata) |
+### D2. 💬 Togliere i log dall'indice (T-001)
+Ti chiederò conferma per `git rm --cached` dei file in `logs/`: smettono di essere tracciati da git ma **restano sul tuo disco**.
 
-## 4. Prima della pubblicazione (Fase 7)
-
-- **T-001:** conferma `git rm --cached` dei log (`logs/signals_history.json`, `logs/backtest_*.csv`); i file restano su disco.
-- **T-003:** configura l'email "noreply" di GitHub per i commit (Settings → Emails → "Keep my email addresses private", poi `git config user.email <id>+<utente>@users.noreply.github.com`).
-- **T-005:** decidi se versionare le regole `permissions.deny` (oggi `.claude/` è ignorata da git, quindi valgono solo su questa macchina).
-- **T-002:** tenere o rimuovere `YahooNewsFeed` (oggi inutilizzata).
-- **Push:** solo su tua conferma, dopo `/ecc:security-scan`.
+### D3. 💬 Push
+Dopo il controllo di sicurezza (`/ecc:security-scan`) ti chiederò se pubblicare. Senza il tuo "sì" non faccio nessun push.
