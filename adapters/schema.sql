@@ -90,11 +90,13 @@ CREATE TABLE IF NOT EXISTS outcomes (
     resolved_by  TEXT NOT NULL CHECK (resolved_by IN ('virtuale', 'broker'))
 );
 
--- Sola aggiunta (P3.20). Eccezioni: chiusura di un ciclo 'running' (una volta) e veto_shadow da NULL (una volta).
+-- Sola aggiunta (P3.20). Eccezioni: chiusura di un ciclo 'running' (una volta, con input e versioni:
+-- l'input completo si conosce solo a fine ciclo) e veto_shadow da NULL (una volta).
 CREATE TRIGGER IF NOT EXISTS cycles_immutable BEFORE UPDATE OF
-    cycle_id, symbol, candle_close_utc, candle_close_server, code_version, config_hash, input_json, input_hash, started_at
+    cycle_id, symbol, candle_close_utc, candle_close_server, started_at
     ON cycles BEGIN SELECT RAISE(ABORT, 'cycles: sola aggiunta'); END;
-CREATE TRIGGER IF NOT EXISTS cycles_close_once BEFORE UPDATE OF finished_at, status, error ON cycles
+CREATE TRIGGER IF NOT EXISTS cycles_close_once BEFORE UPDATE OF
+    finished_at, status, error, input_json, input_hash, code_version, config_hash ON cycles
     WHEN OLD.status <> 'running' BEGIN SELECT RAISE(ABORT, 'cycles: ciclo già chiuso'); END;
 
 CREATE TRIGGER IF NOT EXISTS candidates_immutable BEFORE UPDATE OF

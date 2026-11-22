@@ -134,6 +134,13 @@ class FakeStore:
         self.candidates: dict[int, tuple[int, CandidateRecord]] = {}
         self.executions: list[tuple] = []
         self.outcomes: dict[int, Outcome] = {}
+        self.finished: dict[int, dict] = {}
+
+    def finish_cycle(self, cycle_id, status, error=None, input_json=None, code_version=None, config_hash=None):
+        if cycle_id in self.finished or status not in ("done", "error"):
+            raise ValueError(f"ciclo {cycle_id} già chiuso o status non valido: {status}")
+        self.finished[cycle_id] = dict(status=status, error=error, input_json=input_json,
+                                       code_version=code_version, config_hash=config_hash)
 
     def begin_cycle(self, symbol: str, candle_close_utc: datetime) -> int | None:
         if (symbol, candle_close_utc) in self.cycles.values():

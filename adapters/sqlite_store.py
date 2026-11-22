@@ -1,4 +1,5 @@
 """Archivio SQLite che implementa la porta SignalStore (D-007). Il file sta in data/, ignorato da git."""
+import hashlib
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,6 +37,22 @@ class SqliteStore:
                 "INSERT OR IGNORE INTO cycles (symbol, candle_close_utc, started_at) VALUES (?, ?, ?)",
                 (symbol, _iso(candle_close_utc), _iso(self._clock())))
         return cur.lastrowid if cur.rowcount == 1 else None
+
+    def finish_cycle(self, cycle_id: int, status: str, error: Optional[str] = None, input_json: Optional[str] = None,
+                     code_version: Optional[str] = None, config_hash: Optional[str] = None) -> None:
+        if status not in ("done", "error"):
+            raise ValueError(f"archivio: status di chiusura non valido: {status}")
+        input_hash = hashlib.sha256(input_json.encode()).hexdigest() if input_json else None
+        try:
+            with self.conn:
+                cur = self.conn.execute(
+                    "UPDATE cycles SET status = ?, error = ?, input_json = ?, input_hash = ?, code_version = ?,"
+                    " config_hash = ?, finished_at = ? WHERE cycle_id = ?",
+                    (status, error, input_json, input_hash, code_version, config_hash, _iso(self._clock()), cycle_id))
+        except sqlite3.IntegrityError as exc:  # trigger (già chiuso) o CHECK (status non valido)
+            raise ValueError(f"archivio: {exc}") from exc
+        if cur.rowcount != 1:
+            raise ValueError(f"archivio: ciclo {cycle_id} inesistente")
 
     def last_cycle(self, symbol: str) -> Optional[datetime]:
         row = self.conn.execute("SELECT MAX(candle_close_utc) FROM cycles WHERE symbol = ?", (symbol,)).fetchone()
