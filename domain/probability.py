@@ -8,8 +8,11 @@ misurate dal prezzo di esecuzione atteso (ask per BUY, bid per SELL); c = costo 
     EV = p·W − (1 − p)·L                   con p = p0 vale −c/d_SL: senza vantaggio si perde il costo
 """
 from dataclasses import dataclass
+from typing import Optional
 
 from scipy.stats import beta as beta_dist
+
+from domain.types import HoldReason
 
 
 def p0(d_sl: float, d_tp: float) -> float:
@@ -53,6 +56,10 @@ class BetaPosterior:
     def quantile(self, q: float) -> float:
         return float(beta_dist.ppf(q, self.a, self.b))
 
+    def prob_above(self, x: float) -> float:
+        """P(p > x | dati): con x = p* è la confidenza mostrata all'utente."""
+        return float(beta_dist.sf(x, self.a, self.b))
+
 
 def beta_posterior(p0: float, kappa: float, wins: float, losses: float) -> BetaPosterior:
     if not 0 < p0 < 1:
@@ -65,3 +72,18 @@ def beta_posterior(p0: float, kappa: float, wins: float, losses: float) -> BetaP
 def ev5(post: BetaPosterior, pay: Payoff) -> float:
     """EV valutato al quantile 5% di p: il numero prudente su cui decide il gate."""
     return ev(post.quantile(0.05), pay)
+
+
+def kelly_risk_pct(p: float, pay: Payoff, lam: float = 0.25, cap: float = 1.0) -> float:
+    """Rischio % = min(cap, λ·f*), f* = p − (1−p)/(W/L). La perdita L include il costo,
+    coerente con il rischio per operazione di domain.risk. f* ≤ 0 (cioè p ≤ p*) -> 0."""
+    f_star = p - (1 - p) * pay.loss / pay.win
+    if f_star <= 1e-12:  # a p = p* f* è 0 in teoria, ~1e-17 in virgola mobile
+        return 0.0
+    return min(cap, lam * f_star * 100)
+
+
+def ev_gate(ev5_value: float, ev_min: float = 0.0) -> tuple[bool, Optional[HoldReason]]:
+    if ev5_value > ev_min:
+        return True, None
+    return False, HoldReason.GATE_EV
