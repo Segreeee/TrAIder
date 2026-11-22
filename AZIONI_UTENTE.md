@@ -114,6 +114,29 @@ Lo script **legge solo dati**: non apre posizioni e non usa funzioni di trading.
 Se compare "Scarto non determinabile", il mercato è chiuso: riprova più tardi in un giorno feriale.
 Se compare "initialize fallita: (-6, ...Authorization failed)", login, password o server del `.env` non corrispondono al conto (vedi A4a).
 
+### A5. 🖥️ Primo avvio di prova del nuovo programma (una sola candela)
+
+**Cosa fa:** elabora l'ultima candela chiusa per i 6 simboli e si ferma. Broker **simulato**: nessun ordine
+(verificato: con il tuo `.env` DRY_RUN è attivo e il secondo consenso è spento). Scrive in `data/traider.db` e in `logs/traider.log`.
+
+**Prima:**
+1. **MetaTrader 5** installato (lo script usa le credenziali del `.env`).
+2. **Ollama** acceso, con il modello degli analisti scaricato. Nel terminale:
+   ```
+   ollama list
+   ```
+   Deve comparire `gemma3:12b`. Se manca: `ollama pull gemma3:12b`.
+3. Mercato aperto (da domenica sera a venerdì sera).
+
+**Come:** nel terminale di VS Code, dalla cartella del progetto:
+```
+python main.py --once
+```
+Ci vorrà qualche minuto (fino a 12 chiamate LLM). **Mandami le ultime 20-30 righe** dell'output, oppure
+il contenuto di `logs/traider.log`. Controlla prima che non ci siano chiavi o password (non dovrebbero esserci).
+
+Se compare `configurazione non valida: ...` o `MetaTrader5 non inizializzato`, mandami quella riga.
+
 ---
 
 ## B. Quando vuoi (non bloccano nulla)

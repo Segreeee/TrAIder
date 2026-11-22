@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-22 · **Prossima azione:** P3.28 (scheduler e composizione: il nuovo programma parte davvero). In attesa [UTENTE]: P3.05 (fuso MT5), P3.18 (Finnhub, T-008), Q-005 (soglia di attivazione del modello), COMMISSION_EUR_PER_LOT e aggiornamento di `.env` (necessario da P3.28).
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-22 · **Prossima azione:** prova dell'utente `python main.py --once` (A5 in AZIONI_UTENTE.md), poi P3.29 (migrazione dei test legacy, conferme utente). In attesa [UTENTE]: P3.05 (fuso MT5), P3.18 (Finnhub, T-008), Q-005 (soglia di attivazione del modello), COMMISSION_EUR_PER_LOT e aggiornamento di `.env` (necessario da P3.28).
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -930,3 +930,4 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-22: P3.27 fatto (app/resolve.py; first_hit nel dominio, condiviso con il simulatore): 327 passed, 1 xfailed. Trovato T-010 (spread contato due volte nei BUY), da decidere. Aggiunto P6.04 (diagramma Archify) alla roadmap. Azioni dell'utente raccolte in AZIONI_UTENTE.md.
 - 2026-11-22: decisioni utente: Q-005 (a) e T-010 (correggi) applicate in TDD; Finnhub uso privato (P3.18 sbloccato). Difetto dei test corretto: leggevano l'ambiente reale e uno ha stampato credenziali MT5 (ora isolati, password da cambiare). P3.05: scarto server − UTC = +2 ore, misurato su server MetaQuotes; da ripetere sul demo Pepperstone. 350 passed.
 - 2026-11-22: T-007 chiuso su decisione dell'utente. P3.18 fatto (adapters/finnhub_news.py, chiave nell'header, errori → lista vuota): 359 passed.
+- 2026-11-22: P3.28 fatto: app/scheduler.py, app/compose.py, main.py riscritto (--once). Il flusso legacy non è più raggiungibile da main.py. Con il .env dell'utente il broker composto è quello simulato (verificato leggendo solo i flag). 373 passed.
