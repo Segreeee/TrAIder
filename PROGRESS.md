@@ -29,7 +29,7 @@ Il planner aveva dedotto le formule da ALTERNATIVE.md; qui sono riscritte sulla 
    - ✎ **Confidenza mostrata all'utente** = P(p > p\* | dati) dalla distribuzione a posteriori, più p, p\*, EV e intervallo (passo P4.03).
    - ✎ **Attivazione del modello:** β ≠ 0 solo con almeno MIN_TRADES_FOR_MODEL (default 100) candidati risolti **e** Brier skill score > 0 fuori campione (passo P4.04); altrimenti β = 0 e "nessun vantaggio dimostrato". I candidati contano anche se non eseguiti (Q-004).
 2. **Il rischio per operazione include il costo:** lotto · (d_SL + c) in pip · valore del pip in EUR ≤ capitale · rischio%. Scelta prudente, più severa della specifica: da confermare.
-3. **Simulatore:** barre bid, ingresso alla chiusura più spread per i BUY ✎; c = spread (colonna MT5) + commissione + slippage di configurazione; SL prioritario se TP e SL cadono nella stessa candela; orizzonte di 96 barre.
+3. **Simulatore:** barre bid, ingresso alla chiusura più spread per i BUY ✎; uscite dei BUY sul bid, dei SELL sull'ask (bid + spread della barra); c = commissione + slippage di configurazione, **senza spread**, perché le distanze partono già dal prezzo di esecuzione (T-010, deciso dall'utente il 2026-11-22); SL prioritario se TP e SL cadono nella stessa candela; orizzonte di 96 barre.
 4. **Generatore baseline:** direzione se chiusura vs EMA20 concorda con il trend H1; SL = 1.0·ATR, TP = 1.5·ATR, quindi p0 ≈ 0.4.
 5. **Versioni delle dipendenze:** in P3.01 si fissano con `==` alla versione installata.
 6. **scipy** diventa dipendenza diretta (`beta.ppf`, `optimize`).

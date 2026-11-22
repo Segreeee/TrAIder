@@ -26,14 +26,20 @@ def realized_result(
     }
 
 
-def first_hit(action: str, tp: float, sl: float, future_df: pd.DataFrame) -> Optional[tuple[str, float, int]]:
+def first_hit(action: str, tp: float, sl: float, future_df: pd.DataFrame,
+              spread=0.0) -> Optional[tuple[str, float, int]]:
     """(esito, prezzo, posizione della barra) del primo tra TP/SL toccato; SL se ambigui nella stessa
-    candela (scelta prudente). None se nessuno dei due è toccato."""
-    for i, (high, low) in enumerate(zip(future_df["high"], future_df["low"])):
+    candela (scelta prudente). None se nessuno dei due è toccato.
+
+    Le barre sono bid. Un BUY esce sul bid; un SELL esce sull'ask, quindi per i SELL si confrontano
+    massimo e minimo + `spread` (in prezzo: scalare o una serie per barra) (T-010)."""
+    n = len(future_df)
+    spreads = [float(spread)] * n if pd.api.types.is_scalar(spread) else [float(s) for s in spread]
+    for i, (high, low, s) in enumerate(zip(future_df["high"], future_df["low"], spreads)):
         if action == "BUY":
             hit_sl, hit_tp = low <= sl, high >= tp
-        else:  # SELL
-            hit_sl, hit_tp = high >= sl, low <= tp
+        else:  # SELL: l'uscita avviene all'ask
+            hit_sl, hit_tp = high + s >= sl, low + s <= tp
         if hit_sl:
             return "SL", sl, i
         if hit_tp:

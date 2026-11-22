@@ -71,9 +71,10 @@ def _decide_all(symbol: str, cycle: int, cand: Candidate, last_bar: pd.Series, a
                 called: set, ports: Ports, cfg: Settings, report: CycleReport) -> None:
     pip = pip_size(symbol)
     pip_value = pip_value_eur(symbol, ports.market.eur_quote_rate(symbol))
+    # T-010: le distanze partono già dal prezzo di esecuzione (ask per i BUY; i SELL escono all'ask),
+    # quindi lo spread non entra nel costo: c = commissione + slippage.
     # ponytail: commissione assente (ammessa solo in simulazione) vale 0 e sottostima il costo; va impostata nel .env
-    cost = cost_pips(float(last_bar["spread"]), pip / 10, pip, cfg.commission_eur_per_lot or 0.0, pip_value,
-                     cfg.slippage_pips)
+    cost = cost_pips(0.0, pip / 10, pip, cfg.commission_eur_per_lot or 0.0, pip_value, cfg.slippage_pips)
     ctx = Context(account.equity, account.open_positions, account.day_pnl, cost, pip_value, cfg)
     for variant in VARIANTS.values():
         if not available(variant, report.features, called):
