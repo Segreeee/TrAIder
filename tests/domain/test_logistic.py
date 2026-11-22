@@ -91,3 +91,14 @@ def test_choose_model_requires_positive_out_of_sample_skill():
     assert choose_model(n_resolved=5000, bss=0.0) == "beta"
     assert choose_model(n_resolved=5000, bss=-0.02) == "beta"
     assert choose_model(n_resolved=5000, bss=None) == "beta"
+
+
+def test_bss_lower_bound_is_below_point_estimate_and_positive_for_real_skill():
+    from domain.logistic import bss_lower_bound
+    rng = np.random.default_rng(4)
+    p_true = rng.uniform(0.2, 0.8, 2000)
+    y = (rng.random(2000) < p_true).astype(float)
+    ref = np.full(2000, 0.5)
+    low = bss_lower_bound(y, p_true, ref)
+    assert 0 < low < brier_skill_score(y, p_true, ref)
+    assert bss_lower_bound(y, ref, ref) == pytest.approx(0.0)  # nessuna abilità: estremo inferiore 0

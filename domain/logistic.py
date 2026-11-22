@@ -56,6 +56,22 @@ def brier_skill_score(y: np.ndarray, p_model: np.ndarray, p_ref: np.ndarray) -> 
     return 1.0 - np.mean((p_model - y) ** 2) / np.mean((p_ref - y) ** 2)
 
 
+def bss_lower_bound(y: np.ndarray, p_model: np.ndarray, p_ref: np.ndarray,
+                    level: float = 0.90, n_boot: int = 500, seed: int = 0) -> float:
+    """Estremo inferiore dell'IC bootstrap bilaterale (`level`) del Brier skill score (Q-005, opzione a).
+    Il modello si attiva solo se anche questa stima pessimistica è > 0: "BSS > 0" da solo
+    si accendeva per caso su caratteristiche senza informazione."""
+    rng = np.random.default_rng(seed)
+    n = len(y)
+    stats = []
+    for _ in range(n_boot):
+        i = rng.integers(0, n, n)
+        ref = np.mean((p_ref[i] - y[i]) ** 2)
+        if ref > 0:
+            stats.append(1.0 - np.mean((p_model[i] - y[i]) ** 2) / ref)
+    return float(np.quantile(stats, (1 - level) / 2)) if stats else float("-inf")
+
+
 def choose_model(n_resolved: int, bss: Optional[float], min_n: int = MIN_TRADES_FOR_MODEL) -> str:
     """Logistica solo con abbastanza candidati risolti E abilità fuori campione positiva; altrimenti Beta."""
     if n_resolved >= min_n and bss is not None and bss > 0:

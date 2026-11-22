@@ -2,8 +2,9 @@
 
 Ogni variante stima p e p5 dal proprio storico risolto (Q-004: anche i candidati non eseguiti):
 - Beta(κ·p0 + TP, κ·(1−p0) + SL) finché il modello non è attivo; i TIMEOUT non contano;
-- logistica con offset logit(p0) quando ci sono ≥ MIN_TRADES_FOR_MODEL esiti e Brier skill > 0
-  fuori campione (ultimo 30% in ordine di tempo); p5 da bootstrap.
+- logistica con offset logit(p0) quando ci sono ≥ MIN_TRADES_FOR_MODEL esiti e l'estremo inferiore
+  dell'IC bootstrap al 90% del Brier skill fuori campione (ultimo 30% in ordine di tempo) è > 0 (Q-005);
+  p5 da bootstrap.
 Caratteristiche mancanti (LLM non chiamato o non valido) valgono 0, il centro della loro scala.
 """
 from dataclasses import dataclass
@@ -13,7 +14,7 @@ import numpy as np
 from scipy.special import expit, logit
 
 from app.config import Settings
-from domain.logistic import brier_skill_score, choose_model, fit_offset_logistic, predict
+from domain.logistic import bss_lower_bound, choose_model, fit_offset_logistic, predict
 from domain.probability import beta_posterior, p0
 from domain.types import Candidate
 from ports import CandidateRecord, Outcome
@@ -66,8 +67,8 @@ def _logistic(variant: Variant, x_now: list[float], off_now: float, decided: lis
     y = np.array([1.0 if o.result == "TP" else 0.0 for _, o in decided])
     split = int(len(y) * (1 - TEST_SHARE))
     beta_train = fit_offset_logistic(X[:split], y[:split], off[:split])
-    bss = brier_skill_score(y[split:], predict(X[split:], off[split:], beta_train), expit(off[split:]))
-    if choose_model(len(y), bss, cfg.min_trades_for_model) != "logistica":
+    bss_low = bss_lower_bound(y[split:], predict(X[split:], off[split:], beta_train), expit(off[split:]))
+    if choose_model(len(y), bss_low, cfg.min_trades_for_model) != "logistica":
         return None
     x, o = np.array([x_now]), np.array([off_now])
     p = float(predict(x, o, fit_offset_logistic(X, y, off))[0])
