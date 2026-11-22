@@ -5,7 +5,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from domain.costs import cost_pips, distance_pips
-from domain.outcome import realized_result, simulate_outcome
+from domain.outcome import first_hit, realized_result, simulate_outcome
 
 
 # --- costi ------------------------------------------------------------------ #
@@ -83,3 +83,25 @@ def test_timeout_without_bars():
 def test_backtester_reexports_domain_outcome():
     import core.backtester as bt
     assert bt.simulate_outcome is simulate_outcome and bt.realized_result is realized_result
+
+
+# --- T-010: le uscite dei SELL avvengono all'ask (bid + spread) -------------- #
+
+
+def _one_bar(high, low):
+    return pd.DataFrame({"high": [high], "low": [low], "close": [(high + low) / 2]})
+
+
+def test_sell_tp_needs_the_ask_to_reach_it():
+    # bid tocca il TP (1.0970) ma l'ask resta 0.8 pip sopra: per un SELL non è un'uscita
+    assert first_hit("SELL", tp=1.0970, sl=1.1020, future_df=_one_bar(1.0990, 1.0970), spread=0.00008) is None
+
+
+def test_sell_sl_hit_by_the_ask():
+    # il bid si ferma 0.5 pip sotto lo SL, l'ask lo supera: per un SELL è stop
+    assert first_hit("SELL", tp=1.0970, sl=1.1020, future_df=_one_bar(1.10195, 1.0990), spread=0.00008)[0] == "SL"
+
+
+def test_buy_exits_ignore_spread():
+    bar = _one_bar(1.1030, 1.0990)
+    assert first_hit("BUY", 1.1030, 1.0980, bar, spread=0.00008) == first_hit("BUY", 1.1030, 1.0980, bar)

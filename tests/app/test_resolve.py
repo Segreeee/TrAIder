@@ -116,3 +116,20 @@ def test_asks_enough_bars_to_cover_the_candidate():
     market = PathMarket(before=[1.1000] * 5, after=[1.1001] * 40)
     resolve_pending(store, market, _now(market))
     assert market.requests and market.requests[0] >= 41  # tutte le barre dalla chiusura a ora
+
+
+# --- T-010 ------------------------------------------------------------------- #
+
+
+def test_sell_exit_checked_on_ask():
+    # il bid scende fino al TP (low 1.0970), l'ask (bid + 0.8 pip) no: il SELL resta aperto
+    store, cid = _store_with(direction=Direction.SELL, entry=1.1000, sl=1.1020, tp=1.0970)
+    market = PathMarket(before=[1.1000] * 5, after=[1.0972] * 3)
+    assert resolve_pending(store, market, _now(market)) == 0
+
+
+def test_sell_timeout_exits_at_ask():
+    store, cid = _store_with(direction=Direction.SELL, entry=1.1000, sl=1.1020, tp=1.0970)
+    market = PathMarket(before=[1.1000] * 5, after=[1.0999] * 100)
+    resolve_pending(store, market, _now(market))
+    assert store.outcomes[cid].exit_price == pytest.approx(1.0999 + 0.00008)

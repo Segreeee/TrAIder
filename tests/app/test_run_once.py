@@ -206,3 +206,11 @@ def test_default_broker_is_sim():
     broker = broker_from_settings(_cfg(), make_live=lambda: calls.append(1),
                                   make_sim=lambda: SimBroker(quote=lambda s: (1.1, 1.1001)))
     assert isinstance(broker, SimBroker) and calls == []
+
+def test_cost_excludes_spread():
+    # T-010: le distanze partono già dal prezzo di esecuzione (ask per i BUY): il costo è
+    # commissione + slippage, senza contare lo spread una seconda volta
+    ports = _ports()
+    run_once("EURUSD", CLOSE, ports, Settings(_env_file=None, commission_eur_per_lot=7.0, slippage_pips=0.2))
+    rec = next(r for _, r in ports.store.candidates.values())
+    assert rec.cost_pips == pytest.approx(7.0 / (0.0001 * 100_000 / 1.10) + 0.2)
