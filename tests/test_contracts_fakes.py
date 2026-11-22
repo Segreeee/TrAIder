@@ -3,10 +3,11 @@ from datetime import datetime, timezone
 
 import pytest
 
-from ports import MarketData, NewsFeed
+from ports import MarketData, NewsFeed, SignalStore
+from tests.contracts import store_contract
 from tests.contracts.market_data_contract import check_market_data
 from tests.contracts.news_contract import check_news_feed
-from tests.fakes import FakeMarketData, FakeNews
+from tests.fakes import FakeMarketData, FakeNews, FakeStore
 
 NOW = datetime(2026, 3, 2, 12, 7, tzinfo=timezone.utc)  # a metà della candela M15 12:00–12:15
 
@@ -31,3 +32,12 @@ def test_fake_news_honours_contract():
 
 def test_fake_news_is_a_news_feed():
     assert isinstance(FakeNews(now=NOW), NewsFeed)
+
+
+@pytest.mark.parametrize("check", store_contract.ALL, ids=lambda f: f.__name__)
+def test_fake_store_honours_contract(check):
+    check(FakeStore)
+
+
+def test_fake_store_is_a_signal_store():
+    assert isinstance(FakeStore(), SignalStore)

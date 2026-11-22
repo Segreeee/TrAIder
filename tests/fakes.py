@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from ports import LlmResponse, NewsItem
+from ports import CandidateRecord, LlmResponse, NewsItem, Outcome
 
 
 class FakeLlm:
@@ -60,3 +60,46 @@ class FakeNews:
 
     def latest(self, symbol: str, limit: int) -> list[NewsItem]:
         return sorted(self.items, key=lambda n: n.published_at, reverse=True)[:limit]
+
+
+class FakeStore:
+    """Archivio in memoria con gli stessi vincoli di unicità dello schema SQLite (D-007)."""
+
+    def __init__(self):
+        self.cycles: dict[int, tuple[str, datetime]] = {}
+        self.llm_calls: list[tuple] = []
+        self.candidates: dict[int, tuple[int, CandidateRecord]] = {}
+        self.executions: list[tuple] = []
+        self.outcomes: dict[int, Outcome] = {}
+
+    def begin_cycle(self, symbol: str, candle_close_utc: datetime) -> int | None:
+        if (symbol, candle_close_utc) in self.cycles.values():
+            return None
+        cycle_id = len(self.cycles) + 1
+        self.cycles[cycle_id] = (symbol, candle_close_utc)
+        return cycle_id
+
+    def last_cycle(self, symbol: str) -> datetime | None:
+        return max((c for s, c in self.cycles.values() if s == symbol), default=None)
+
+    def record_llm_call(self, cycle_id: int, role: str, result) -> None:
+        self.llm_calls.append((cycle_id, role, result))
+
+    def record_candidate(self, cycle_id: int, record: CandidateRecord) -> int:
+        if any(c == cycle_id and r.variant == record.variant for c, r in self.candidates.values()):
+            raise ValueError(f"candidato già registrato per la variante {record.variant}")
+        cid = len(self.candidates) + 1
+        self.candidates[cid] = (cycle_id, record)
+        return cid
+
+    def record_execution(self, candidate_id: int, fill, lots: float) -> None:
+        self.executions.append((candidate_id, fill, lots))
+
+    def record_outcome(self, candidate_id: int, outcome: Outcome) -> bool:
+        if candidate_id in self.outcomes:
+            return False
+        self.outcomes[candidate_id] = outcome
+        return True
+
+    def pending_candidates(self) -> list[tuple[int, CandidateRecord]]:
+        return [(cid, r) for cid, (_, r) in self.candidates.items() if cid not in self.outcomes]
