@@ -17,6 +17,8 @@ e limitato a un massimo di sicurezza configurabile.
 import logging
 import math
 
+from domain.types import levels_consistent  # noqa: F401  (re-export temporaneo, rimosso in P3.31)
+
 logger = logging.getLogger(__name__)
 
 PIP_VALUE_PER_STANDARD_LOT_USD = 10.0  # valido per EURUSD con conto in USD/EUR
@@ -35,15 +37,6 @@ def compute_risk_reward_ratio(entry_price: float, take_profit_price: float, stop
     if risk <= 0:
         return 0.0
     return reward / risk
-
-
-def levels_consistent(action: str, entry_price: float, take_profit_price: float, stop_loss_price: float) -> bool:
-    """TP e SL dal lato giusto dell'ingresso: BUY -> SL < entry < TP; SELL -> TP < entry < SL."""
-    if action == "BUY":
-        return stop_loss_price < entry_price < take_profit_price
-    if action == "SELL":
-        return take_profit_price < entry_price < stop_loss_price
-    return False
 
 
 def meets_min_risk_reward(
