@@ -13,7 +13,8 @@ CLOSE = datetime(2026, 3, 2, 12, 0, tzinfo=timezone.utc)
 def _record(variant="v1-tecnico", close=CLOSE):
     cand = Candidate("EURUSD", Direction.BUY, 1.1000, 1.0980, 1.1030, close)
     return CandidateRecord(variant=variant, candidate=cand, cost_pips=1.0, p=0.4, p_star=0.42,
-                           ev=-0.05, ev5=-0.2, decision="HOLD", hold_reason="GATE_EV")
+                           ev=-0.05, ev5=-0.2, decision="HOLD", hold_reason="GATE_EV",
+                           p0=0.4, p5=0.31, lot=0.0, features={"momentum": 1.5, "tecnico": None})
 
 
 def _outcome():

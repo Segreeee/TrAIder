@@ -1,5 +1,6 @@
-"""P3.25: run_once, parte 1. Dati → candidato → analisti LLM → archivio, su porte finte.
-Idempotenza per candela, macro solo con notizie visibili, LLM giù = caratteristiche mancanti."""
+"""P3.25–P3.26: run_once su porte finte. Dati → candidato → analisti LLM → varianti → decisione → archivio.
+Idempotenza per candela, macro solo con notizie visibili, LLM giù = caratteristiche mancanti,
+tutte le varianti sullo stesso candidato, solo la variante di produzione arriva al broker."""
 import json
 from datetime import datetime, timedelta, timezone
 
@@ -7,9 +8,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from adapters.sim_broker import SimBroker
 from app.config import Settings
-from app.run_once import Ports, run_once
-from ports import NewsItem
+from app.run_once import Ports, broker_from_settings, run_once
+from domain.types import Candidate, Direction
+from ports import CandidateRecord, NewsItem, Outcome
 from tests.fakes import FakeLlm, FakeNews, FakeStore
 
 START = datetime(2026, 3, 2, 0, 0, tzinfo=timezone.utc)
@@ -43,14 +46,22 @@ class TableMarket:
             raise RuntimeError("terminale MT5 non raggiungibile")
         return (self.m15 if timeframe == "M15" else self.h1).tail(count).reset_index(drop=True)
 
+    def eur_quote_rate(self, symbol):
+        return 1.10
+
 
 CLOSE = START + timedelta(minutes=15 * 200)  # chiusura dell'ultima barra M15
 
 
-def _ports(market=None, news_items=(), tech=None, macro=None):
+def _quote(symbol):
+    bid = float(TableMarket().m15["close"].iloc[-1])  # prezzo corrente = ultima chiusura, spread 0.8 pip
+    return bid, bid + 0.00008
+
+
+def _ports(market=None, news_items=(), tech=None, macro=None, store=None, broker=None):
     return Ports(market=market or TableMarket(), news=FakeNews(CLOSE, items=list(news_items)),
                  technical=tech or FakeLlm([VIEW_BUY] * 5), macro=macro or FakeLlm([VIEW_BUY] * 5),
-                 store=FakeStore())
+                 store=store or FakeStore(), broker=broker or SimBroker(quote=_quote))
 
 
 def _cfg():
@@ -126,3 +137,72 @@ def test_market_error_records_cycle_error():
 def test_naive_candle_close_raises():
     with pytest.raises(ValueError):
         run_once("EURUSD", CLOSE.replace(tzinfo=None), _ports(), _cfg())
+
+
+# --- P3.26: varianti e decisione ---------------------------------------------- #
+
+
+def test_all_variants_share_same_candidate():
+    ports = _ports(news_items=[NewsItem("BCE", "x", CLOSE - timedelta(hours=2), CLOSE - timedelta(hours=1))])
+    run_once("EURUSD", CLOSE, ports, _cfg())
+    recs = [r for _, r in ports.store.candidates.values()]
+    assert {r.variant for r in recs} == {"v1-p0", "v2-tecnica", "v3-llm-tecnico", "v4-llm-macro", "v5-consenso",
+                                         "v7-completo"}
+    assert len({r.candidate for r in recs}) == 1
+
+
+def test_macro_variants_not_recorded_without_news():
+    ports = _ports()
+    run_once("EURUSD", CLOSE, ports, _cfg())
+    variants = {r.variant for _, r in ports.store.candidates.values()}
+    assert "v4-llm-macro" not in variants and "v5-consenso" not in variants and "v7-completo" in variants
+
+
+def test_gate_closed_submits_nothing():
+    # Q-004: senza esiti risolti p = p0 e con costo > 0 il gate resta chiuso per tutte le varianti
+    ports = _ports()
+    run_once("EURUSD", CLOSE, ports, _cfg())
+    recs = [r for _, r in ports.store.candidates.values()]
+    assert all(r.decision == "HOLD" and r.hold_reason == "GATE_EV" for r in recs)
+    assert ports.broker.positions() == [] and ports.store.executions == []
+
+
+class LosingBroker(SimBroker):
+    def account(self):
+        acc = super().account()
+        return acc.__class__(acc.equity - 400, acc.open_positions, -400.0)
+
+
+def test_daily_loss_stops_before_llm():
+    ports = _ports(broker=LosingBroker(quote=_quote))
+    run_once("EURUSD", CLOSE, ports, _cfg())
+    assert ports.technical.calls == [] and ports.macro.calls == []
+    prod = [r for _, r in ports.store.candidates.values() if r.variant == "v7-completo"][0]
+    assert prod.hold_reason == "DAILY_LOSS"
+
+
+def test_edge_in_history_submits_production_only():
+    # storico risolto con il 70% di TP (p* ≈ 0.42): con 300 esiti la Beta apre il gate
+    store = FakeStore()
+    for i in range(300):
+        cycle = store.begin_cycle("EURUSD", START - timedelta(days=60) + timedelta(minutes=15 * i))
+        cand = Candidate("EURUSD", Direction.BUY, 1.1000, 1.0980, 1.1030, START - timedelta(days=60))
+        for variant in ("v7-completo", "v2-tecnica"):
+            cid = store.record_candidate(cycle, CandidateRecord(variant, cand, 1.0, 0.4, 0.42, 0.0, 0.0, "HOLD",
+                                                                "GATE_EV", p0=0.4, features={}))
+            store.record_outcome(cid, Outcome("TP" if i % 10 < 7 else "SL", None, None, None, "virtuale", START))
+    ports = _ports(store=store)
+    report = run_once("EURUSD", CLOSE, ports, _cfg())
+    assert report.decision == "TRADE"
+    held = ports.broker.positions()
+    assert [(p.symbol, p.direction) for p in held] == [("EURUSD", Direction.BUY)]
+    assert len(ports.store.executions) == 1  # la sola variante di produzione arriva al broker
+    v2 = [r for cid, (_, r) in ports.store.candidates.items() if r.variant == "v2-tecnica" and cid > 600][0]
+    assert v2.decision == "TRADE"  # decisione virtuale registrata, ma nessun ordine
+
+
+def test_default_broker_is_sim():
+    calls = []
+    broker = broker_from_settings(_cfg(), make_live=lambda: calls.append(1),
+                                  make_sim=lambda: SimBroker(quote=lambda s: (1.1, 1.1001)))
+    assert isinstance(broker, SimBroker) and calls == []
