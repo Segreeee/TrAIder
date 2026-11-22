@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-22 · **Prossima azione:** P3.22 (prossimo passo senza attese). In attesa [UTENTE]: P3.05 (fuso MT5), P3.18 (decisione su Finnhub, vedi T-008), P3.21 (.env).
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-22 · **Prossima azione:** P3.21 (configurazione; poi l'utente aggiorna `.env`). In attesa [UTENTE]: P3.05 (fuso MT5), P3.18 (decisione su Finnhub, vedi T-008).
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
