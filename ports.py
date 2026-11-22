@@ -11,7 +11,7 @@ from pydantic import BaseModel, ValidationError
 from domain.news import NewsItem
 from domain.types import Candidate, Direction
 
-__all__ = ["Broker", "Fill", "OrderRequest", "Position", "build_broker", "CandidateRecord", "Outcome", "SignalStore", "Llm", "LlmResponse", "LlmResult", "MarketData", "NewsFeed", "NewsItem", "call_validated"]
+__all__ = ["AccountState", "Broker", "Fill", "OrderRequest", "Position", "build_broker", "CandidateRecord", "Outcome", "SignalStore", "Llm", "LlmResponse", "LlmResult", "MarketData", "NewsFeed", "NewsItem", "call_validated"]
 
 
 @runtime_checkable
@@ -115,6 +115,13 @@ class Position:
     sl: float
     tp: float
     ticket: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class AccountState:
+    equity: float
+    open_positions: list[tuple[str, str]]  # [(simbolo, "BUY"/"SELL")], solo posizioni del bot
+    day_pnl: float                         # realizzato oggi (con commissioni e swap) + aperto
 
 
 @runtime_checkable

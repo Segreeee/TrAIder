@@ -63,7 +63,7 @@ def test_rejected_by_terminal_is_reported_not_raised():
 
 def test_request_carries_magic_and_execution_price():
     mt5 = FakeMt5(NOW)
-    fill = _broker(mt5, magic=42).submit(OrderRequest("EURUSD", Direction.SELL, 0.2, sl=1.1030, tp=1.0960))
+    fill = _broker(mt5, magic=42).submit(OrderRequest("EURUSD", Direction.SELL, 0.2, sl=1.1030, tp=1.0950))
     req = mt5.sent[0]
     assert req["magic"] == 42 and req["price"] == 1.10000 and req["type"] == mt5.ORDER_TYPE_SELL
     assert fill.accepted and fill.mode == "mt5" and fill.fill_price == 1.10000
