@@ -4,7 +4,22 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from ports import NewsItem
+from ports import LlmResponse, NewsItem
+
+
+class FakeLlm:
+    """Risposte scriptate in ordine; un'eccezione nello script simula un errore di trasporto."""
+
+    def __init__(self, script: list, model: str = "fake-llm", digest: str = "sha256:fake", tokens=(10, 5)):
+        self.script, self.model, self.model_digest, self.tokens = list(script), model, digest, tokens
+        self.calls: list[dict] = []
+
+    def complete(self, system: str, user: str, *, temperature: float) -> LlmResponse:
+        self.calls.append({"system": system, "user": user, "temperature": temperature})
+        item = self.script.pop(0) if self.script else '{"ping": 1}'
+        if isinstance(item, Exception):
+            raise item
+        return LlmResponse(text=item, tokens_in=self.tokens[0], tokens_out=self.tokens[1])
 
 
 class FakeMarketData:
