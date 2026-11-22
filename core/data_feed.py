@@ -18,6 +18,7 @@ try:
 except ImportError:  # pragma: no cover - MT5 e' disponibile solo su Windows
     mt5 = None
 
+from app.features import add_indicators
 from config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -159,35 +160,8 @@ class MarketDataFeed:
     # ------------------------------------------------------------------ #
     # Indicatori
     # ------------------------------------------------------------------ #
-    @staticmethod
-    def add_indicators(
-        df: pd.DataFrame, rsi_length: int = 14, ema_length: int = 20,
-        macd_fast: int = 12, macd_slow: int = 26, macd_signal: int = 9,
-        atr_length: int = 14, bb_length: int = 20, bb_std: float = 2.0,
-    ) -> pd.DataFrame:
-        """Aggiunge RSI, EMA, MACD, ATR e Bollinger Bands al DataFrame OHLCV.
-
-        Le colonne dei DataFrame multi-output (MACD, Bollinger) vengono lette
-        per posizione (non per nome) perche' pandas-ta puo' cambiare le
-        etichette esatte tra versioni/fork del pacchetto.
-        """
-        enriched = df.copy()
-        enriched["rsi"] = ta.rsi(enriched["close"], length=rsi_length)
-        enriched["ema_20"] = ta.ema(enriched["close"], length=ema_length)
-
-        macd_df = ta.macd(enriched["close"], fast=macd_fast, slow=macd_slow, signal=macd_signal)
-        enriched["macd"] = macd_df.iloc[:, 0]
-        enriched["macd_hist"] = macd_df.iloc[:, 1]
-        enriched["macd_signal"] = macd_df.iloc[:, 2]
-
-        enriched["atr"] = ta.atr(enriched["high"], enriched["low"], enriched["close"], length=atr_length)
-
-        bb_df = ta.bbands(enriched["close"], length=bb_length, std=bb_std)
-        enriched["bb_lower"] = bb_df.iloc[:, 0]
-        enriched["bb_mid"] = bb_df.iloc[:, 1]
-        enriched["bb_upper"] = bb_df.iloc[:, 2]
-
-        return enriched
+    # Spostata in app/features.py (P3.22); qui resta solo per il flusso legacy fino a P3.31.
+    add_indicators = staticmethod(add_indicators)
 
     def get_higher_timeframe_trend(
         self, symbol: Optional[str] = None, timeframe: str = "H1", count: int = 100, ema_length: int = 50,
