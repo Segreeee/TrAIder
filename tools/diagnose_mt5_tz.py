@@ -1,25 +1,41 @@
 """Diagnosi in SOLA LETTURA dello scarto tra ora del server MT5 e UTC (T-007, passo P3.05).
 
-Uso (terminale MT5 aperto e loggato, mercato aperto, giorno feriale):
-    .venv\\Scripts\\python tools\\diagnose_mt5_tz.py [SIMBOLO]
+Uso (terminale MT5 installato, mercato aperto, giorno feriale), dalla cartella del progetto:
+    python tools/diagnose_mt5_tz.py [SIMBOLO]
 
-Chiama solo initialize, symbol_select, copy_rates_from_pos e shutdown: nessuna funzione di trading.
+Le credenziali (MT5_LOGIN, MT5_PASSWORD, MT5_SERVER, MT5_PATH) arrivano dal .env tramite app.config;
+la password non viene mai stampata. Chiama solo initialize, symbol_select, copy_rates_from_pos e
+shutdown: nessuna funzione di trading.
 """
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
-import MetaTrader5 as mt5
-
-sys.path.insert(0, ".")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.config import Settings  # noqa: E402
 from domain.clock import server_offset_hours  # noqa: E402
 
 TF_MINUTES = 15
 
 
-def main() -> int:
-    symbol = sys.argv[1] if len(sys.argv) > 1 else "EURUSD"
-    if not mt5.initialize():
+def init_kwargs(cfg: Settings) -> dict:
+    """Argomenti per mt5.initialize; vuoto se il .env non ha credenziali (si usa il login del terminale)."""
+    kwargs = {}
+    if cfg.mt5_path:
+        kwargs["path"] = cfg.mt5_path
+    if cfg.mt5_login:
+        kwargs["login"] = int(cfg.mt5_login)
+        kwargs["password"] = cfg.mt5_password.get_secret_value()
+        kwargs["server"] = cfg.mt5_server
+    return kwargs
+
+
+def main(argv: list[str], mt5, cfg: Settings) -> int:
+    symbol = argv[0] if argv else "EURUSD"
+    if not mt5.initialize(**init_kwargs(cfg)):
         print(f"initialize fallita: {mt5.last_error()}")
+        print("Controlla: MT5 installato e aperto; nel .env MT5_LOGIN (numero del conto demo), "
+              "MT5_PASSWORD e MT5_SERVER esattamente come in MT5 (File > Accedi al conto di trading).")
         return 1
     try:
         if not mt5.symbol_select(symbol, True):
@@ -44,4 +60,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    import MetaTrader5  # solo qui: i test usano un MT5 finto
+    raise SystemExit(main(sys.argv[1:], MetaTrader5, Settings()))
