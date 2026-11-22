@@ -20,8 +20,8 @@ def test_eurusd_normal_case():
 
 
 def test_cost_counts_as_risk():
-    # stesso caso con 2 pip di costo: 100 / (22 * 9.0909) = 0.4999 -> 0.49
-    assert _lot(10_000, 1.0, 20, 2.0, 9.0909) == pytest.approx(0.49)
+    # stesso caso con 2 pip di costo: 100 / (22 * 9.0909) = 0.5000005 -> 0.50 (senza costo 0.55)
+    assert _lot(10_000, 1.0, 20, 2.0, 9.0909) == pytest.approx(0.50)
 
 
 def test_lot_below_minimum_means_no_trade():
