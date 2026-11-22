@@ -81,6 +81,17 @@ def check_finish_cycle_once(make_store):
         store.finish_cycle(store.begin_cycle("GBPUSD", CLOSE), "forse")
 
 
-ALL = [check_finish_cycle_once,check_begin_cycle_idempotent, check_candidate_unique_per_variant, check_outcome_recorded_once,
-       check_pending_excludes_resolved, check_llm_call_and_execution_are_kept,
-       check_pending_roundtrip_keeps_the_record]
+def check_resolved_history_per_variant(make_store):
+    store = make_store()
+    cycle = store.begin_cycle("EURUSD", CLOSE)
+    a = store.record_candidate(cycle, _record("v1"))
+    store.record_candidate(cycle, _record("v2"))
+    assert store.resolved("v1") == []
+    store.record_outcome(a, _outcome())
+    assert store.resolved("v1") == [(_record("v1"), _outcome())]
+    assert store.resolved("v2") == []
+
+
+ALL = [check_finish_cycle_once, check_resolved_history_per_variant, check_begin_cycle_idempotent,
+       check_candidate_unique_per_variant, check_outcome_recorded_once, check_pending_excludes_resolved,
+       check_llm_call_and_execution_are_kept, check_pending_roundtrip_keeps_the_record]
