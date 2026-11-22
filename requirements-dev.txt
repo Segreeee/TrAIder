@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest==9.2.0
+hypothesis==6.170.17
+coverage==7.17.4
