@@ -127,8 +127,8 @@ Quando avrai scelto un servizio (per esempio uno compatibile con l'API OpenAI), 
 
 ---
 
-### B3. 🖥️ Chiave Finnhub (dopo P3.18)
-Hai scelto l'uso privato. Quando l'adattatore Finnhub sarà pronto (P3.18) ti chiederò di:
+### B3. 🖥️ Chiave Finnhub (l'adattatore è pronto: puoi farlo ora)
+Hai scelto l'uso privato. L'adattatore è pronto (P3.18); le notizie si accendono quando il nuovo programma parte (P3.28). Passi:
 1. registrarti su https://finnhub.io (piano gratuito) e copiare la **API key** dalla dashboard;
 2. aggiungere nel `.env` le righe `NEWS_PROVIDER=finnhub` e `FINNHUB_API_KEY=<la tua chiave>`.
 La chiave va solo nel `.env`, mai in chat. Promemoria della scelta: i titoli delle notizie restano in `data/`
