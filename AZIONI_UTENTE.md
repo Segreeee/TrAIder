@@ -84,9 +84,11 @@ nessun test può più leggere la configurazione reale). Per sicurezza:
 1. **Cambia la password del conto demo** (in MT5: *Strumenti → Opzioni → Server → Cambia*, oppure dall'area clienti del broker) e aggiorna `MT5_PASSWORD` nel `.env`.
 2. **Controlla il server:** nel `.env` `MT5_SERVER` indica un server **MetaQuotes**, non Pepperstone. Il progetto prevede il demo **Pepperstone in EUR**. In MT5 apri *File → Accedi al conto di trading*: lì vedi numero di conto e nome esatto del server (per Pepperstone è del tipo `Pepperstone-Demo`). Metti nel `.env` `MT5_LOGIN` e `MT5_SERVER` del conto Pepperstone. I conti demo MetaQuotes scadono dopo un periodo di inattività: è una causa probabile dell'errore -6.
 
-### A4. 🔁 Verifica il fuso orario del server MT5 (P3.05) — fatta una volta, da ripetere
+### A4. ✅ Verifica il fuso orario del server MT5 (P3.05) — chiusa il 2026-11-22 (+2 ore)
 
 Risultato del 2026-11-22: **+2 ore**, ma su un server **MetaQuotes**. Dopo aver messo nel `.env` il conto demo Pepperstone (A4a), rilancia lo stesso comando e mandami di nuovo le tre righe.
+
+*Chiusa su tua decisione: il `.env` è quello voluto. Il testo qui sotto resta come riferimento.*
 
 
 **Quando:** da **lunedì a venerdì**, con il mercato aperto. Oggi è domenica: il forex riapre domenica sera (ora italiana circa 23:00), ma meglio lunedì in orario europeo.
