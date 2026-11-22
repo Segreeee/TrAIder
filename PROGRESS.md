@@ -1,13 +1,13 @@
 # PROGRESS
-**Stato:** Fase 2 — in attesa di approvazione · **Aggiornato:** 2026-11-22 · **Prossima azione:** approvazione del piano, poi P3.01 (ambiente di sviluppo e guardie dei test).
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-22 · **Prossima azione:** P3.03 (direzione TP/SL, T-004).
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
 |---|------|-----------|-----------------------------------|-------|
 | 0 | Lettura del contesto | Capire il sistema, creare CLAUDE.md/PROGRESS.md/DECISIONS.md | 30 test verdi; tre documenti presenti | fatto |
 | 1 | Alternative (niente codice) | D1–D12 con matrici pesate e raccomandazioni | `docs/ALTERNATIVE.md` + un ADR per decisione; **approvazione utente** | fatto |
-| 2 | Piano a fasi | Passi piccoli con test, file, accettazione, rischio | Piano in questo file; **approvazione utente** | in attesa di approvazione |
-| 3 | Implementazione TDD | Dominio, porte, adattatori, orchestrazione, archivio | `pytest` verde; copertura dominio ≥ 85% | da fare |
+| 2 | Piano a fasi | Passi piccoli con test, file, accettazione, rischio | Piano in questo file; **approvazione utente** | fatto |
+| 3 | Implementazione TDD | Dominio, porte, adattatori, orchestrazione, archivio | `pytest` verde; copertura dominio ≥ 85% | in corso |
 | 4 | Modello di confidenza | p0, p*, EV, logistica walk-forward, gate EV_5 | Test obbligatori della specifica verdi | da fare |
 | 5 | Valutazione | Test in avanti su demo; confronto delle 7 varianti | Report con BSS, EV e intervalli | da fare |
 | 6 | Dashboard | Segnali, rischio, curve, calibrazione, confronti | Leggibile da telefono; ogni numero dall'archivio | da fare |
@@ -907,3 +907,5 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-22: Fase 1 scritta: `docs/ALTERNATIVE.md` (D1–D12, matrici pesate) e ADR D-001…D-012 in stato Proposta. Trovati 2 problemi di sicurezza nuovi (T-006, T-007) e una contraddizione nella specifica della Fase 4 (Q-004).
 - 2026-11-22: Fase 1 approvata dall'utente: D-001…D-012 accettate; Q-004 chiusa (candidati risolti virtualmente); fornitore del giudice remoto rimandato (Q-001).
 - 2026-11-22: Fase 2 scritta: 55 passi (P3.01–P7.03). Formule della Fase 4 riallineate alla specifica (Kelly su p, distanze da ask/bid, attivazione con BSS > 0, confidenza P(p > p*)).
+- 2026-11-22: piano approvato (incluse le tre conferme: rischio con costo, 0.50→0.55 lotti, ritiro dei test del giudice decisore).
+- 2026-11-22: P3.01 fatto (0ad3cdd RED, 1733027 GREEN: 34 passed). P3.02 fatto (fe2b65c RED, 7b415a2 GREEN: 40 passed) — T-006 chiuso.
