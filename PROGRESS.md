@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-22 · **Prossima azione:** P3.21 (configurazione; poi l'utente aggiorna `.env`). In attesa [UTENTE]: P3.05 (fuso MT5), P3.18 (decisione su Finnhub, vedi T-008).
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-22 · **Prossima azione:** P3.22 (indicatori e generatore baseline). In attesa [UTENTE]: P3.05 (fuso MT5), P3.18 (decisione su Finnhub, vedi T-008), aggiornamento di `.env` ai nuovi nomi (necessario da P3.28).
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -913,3 +913,4 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-22: P3.06–P3.10 fatti (tipi, pip in EUR, costi ed esito, rischio, esposizione): 103 passed. T-009 risolto nel dominio con distanze arrotondate a 0.1 pip.
 - 2026-11-22: P4.01–P4.04 fatti (domain/probability.py, domain/logistic.py): 140 passed; copertura del dominio 98% con soglia 85% in .coveragerc. Due correzioni dichiarate: strategia di un test a proprietà (differenze subnormali) e f* ≈ 1e-17 a p = p* trattato come zero nel codice.
 - 2026-11-22: P3.11–P3.17 e P3.19–P3.20 fatti: porte (dati, notizie, LLM, broker, archivio) con contratti condivisi tra fake e adattatori; adattatori dati e broker MT5 (solo FakeMt5, nessuna richiesta inviata), LLM OpenAI-compatibile, archivio SQLite a sola aggiunta con WAL. 235 passed. Termini Finnhub verificati (T-008): serve la decisione dell'utente per P3.18.
+- 2026-11-22: P3.21 fatto (app/config.py, 253 passed). Il .env dell'utente ha 5 nomi vecchi (QWEN_API_KEY, QWEN_BASE_URL, QWEN_MODEL, SYMBOL, LOOP_INTERVAL_SECONDS) che la nuova configurazione rifiuta; gli altri valori passano la validazione.
