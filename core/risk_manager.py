@@ -37,15 +37,28 @@ def compute_risk_reward_ratio(entry_price: float, take_profit_price: float, stop
     return reward / risk
 
 
+def levels_consistent(action: str, entry_price: float, take_profit_price: float, stop_loss_price: float) -> bool:
+    """TP e SL dal lato giusto dell'ingresso: BUY -> SL < entry < TP; SELL -> TP < entry < SL."""
+    if action == "BUY":
+        return stop_loss_price < entry_price < take_profit_price
+    if action == "SELL":
+        return take_profit_price < entry_price < stop_loss_price
+    return False
+
+
 def meets_min_risk_reward(
-    entry_price: float, take_profit_price: float, stop_loss_price: float, min_ratio: float = MIN_RISK_REWARD_RATIO,
+    entry_price: float, take_profit_price: float, stop_loss_price: float, *,
+    action: str, min_ratio: float = MIN_RISK_REWARD_RATIO,
 ) -> bool:
     """
     Verifica indipendente che TP/SL rispettino davvero il rapporto minimo
     richiesto nel system prompt (1:1.5). L'LLM a volte dichiara nel campo
     'reasoning' un R:R corretto usando pero' cifre sbagliate: questo controllo
     non si fida del testo generato, ricalcola i prezzi effettivi.
+    Livelli dal lato sbagliato dell'ingresso non passano mai, qualunque sia il rapporto.
     """
+    if not levels_consistent(action, entry_price, take_profit_price, stop_loss_price):
+        return False
     return compute_risk_reward_ratio(entry_price, take_profit_price, stop_loss_price) >= min_ratio
 
 

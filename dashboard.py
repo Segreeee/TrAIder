@@ -108,7 +108,7 @@ def apply_risk_gate(signal: dict, entry_price: float, symbol: str) -> None:
     """
     if signal["action"] not in ("BUY", "SELL"):
         return
-    if not meets_min_risk_reward(entry_price, signal["take_profit_price"], signal["stop_loss_price"]):
+    if not meets_min_risk_reward(entry_price, signal["take_profit_price"], signal["stop_loss_price"], action=signal["action"]):
         actual_rr = compute_risk_reward_ratio(entry_price, signal["take_profit_price"], signal["stop_loss_price"])
         signal["action"] = "HOLD"
         signal["lot_size"] = 0.0

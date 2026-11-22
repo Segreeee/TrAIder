@@ -21,8 +21,9 @@ def test_sell_with_tp_above_entry_rejected():
 
 
 def test_valid_buy_and_sell_still_pass():
-    assert meets_min_risk_reward(1.1000, 1.1030, 1.0980, action="BUY")
-    assert meets_min_risk_reward(1.1000, 1.0970, 1.1020, action="SELL")
+    # R:R 2.0, lontano dal bordo 1.5 (dove la virgola mobile dà 1.4999...: vedi T-009).
+    assert meets_min_risk_reward(1.1000, 1.1040, 1.0980, action="BUY")
+    assert meets_min_risk_reward(1.1000, 1.0960, 1.1020, action="SELL")
 
 
 def test_levels_consistent_known_cases():

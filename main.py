@@ -141,7 +141,7 @@ def run_trading_cycle(
     # 6. Risk gate
     if signal["action"] in ("BUY", "SELL"):
         entry_price = market_payload["indicators"]["last_close"]
-        if not meets_min_risk_reward(entry_price, signal["take_profit_price"], signal["stop_loss_price"]):
+        if not meets_min_risk_reward(entry_price, signal["take_profit_price"], signal["stop_loss_price"], action=signal["action"]):
             actual_rr = compute_risk_reward_ratio(entry_price, signal["take_profit_price"], signal["stop_loss_price"])
             _downgrade_to_hold(signal, f"R:R reale {actual_rr:.2f} sotto la soglia minima {MIN_RISK_REWARD_RATIO}")
         else:

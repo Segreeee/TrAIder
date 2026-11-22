@@ -187,7 +187,7 @@ def run_backtest(
             ))
             continue
 
-        if not meets_min_risk_reward(entry_price, signal["take_profit_price"], signal["stop_loss_price"]):
+        if not meets_min_risk_reward(entry_price, signal["take_profit_price"], signal["stop_loss_price"], action=signal["action"]):
             trades.append(BacktestTrade(
                 timestamp=ts, symbol=symbol, action="HOLD", confidence=signal["confidence_percentage"],
                 entry_price=entry_price, take_profit=None, stop_loss=None, lot_size=None,

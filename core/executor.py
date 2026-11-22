@@ -61,7 +61,7 @@ class OrderExecutor:
         # Il R:R era stato verificato sulla chiusura dell'ultima candela; l'ordine parte
         # invece al prezzo ask/bid attuale (spread incluso). Con stop di pochi pip la
         # differenza puo' far scendere il rapporto sotto la soglia: si ricontrolla qui.
-        if not meets_min_risk_reward(price, signal["take_profit_price"], signal["stop_loss_price"]):
+        if not meets_min_risk_reward(price, signal["take_profit_price"], signal["stop_loss_price"], action=signal["action"]):
             rr = compute_risk_reward_ratio(price, signal["take_profit_price"], signal["stop_loss_price"])
             logger.warning("Ordine %s %s non inviato: R:R al prezzo reale %.5f e' %.2f.", signal["action"], symbol, price, rr)
             self._print_order_summary(symbol, signal, status=f"SKIPPED (R:R reale {rr:.2f})")
