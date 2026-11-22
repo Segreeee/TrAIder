@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-22 · **Prossima azione:** P4.01 (p0, W, L, p*, EV). In attesa: P3.05 [UTENTE].
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-22 · **Prossima azione:** P3.11 (porte dati/notizie, regola anti-futuro). In attesa: P3.05 [UTENTE].
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -8,7 +8,7 @@
 | 1 | Alternative (niente codice) | D1–D12 con matrici pesate e raccomandazioni | `docs/ALTERNATIVE.md` + un ADR per decisione; **approvazione utente** | fatto |
 | 2 | Piano a fasi | Passi piccoli con test, file, accettazione, rischio | Piano in questo file; **approvazione utente** | fatto |
 | 3 | Implementazione TDD | Dominio, porte, adattatori, orchestrazione, archivio | `pytest` verde; copertura dominio ≥ 85% | in corso |
-| 4 | Modello di confidenza | p0, p*, EV, logistica walk-forward, gate EV_5 | Test obbligatori della specifica verdi | da fare |
+| 4 | Modello di confidenza | p0, p*, EV, logistica walk-forward, gate EV_5 | Test obbligatori della specifica verdi | fatta (dominio); collegamento in P3.26 |
 | 5 | Valutazione | Test in avanti su demo; confronto delle 7 varianti | Report con BSS, EV e intervalli | da fare |
 | 6 | Dashboard | Segnali, rischio, curve, calibrazione, confronti | Leggibile da telefono; ogni numero dall'archivio | da fare |
 | 7 | Revisione e pubblicazione | Review, security scan, README onesto | `/code-review`, `/ecc:python-review`, `/ecc:security-scan` puliti | da fare |
@@ -911,3 +911,4 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-22: P3.01 fatto (0ad3cdd RED, 1733027 GREEN: 34 passed). P3.02 fatto (fe2b65c RED, 7b415a2 GREEN: 40 passed) — T-006 chiuso.
 - 2026-11-22: P3.03 fatto (51d1817 RED, 21f63eb GREEN: 46 passed) — T-004 chiuso; aperto T-009 (R:R 1.5 esatto scartato per virgola mobile). P3.04 fatto (4a3677a RED, GREEN: 54 passed); pytest in modalità importlib.
 - 2026-11-22: P3.06–P3.10 fatti (tipi, pip in EUR, costi ed esito, rischio, esposizione): 103 passed. T-009 risolto nel dominio con distanze arrotondate a 0.1 pip.
+- 2026-11-22: P4.01–P4.04 fatti (domain/probability.py, domain/logistic.py): 140 passed; copertura del dominio 98% con soglia 85% in .coveragerc. Due correzioni dichiarate: strategia di un test a proprietà (differenze subnormali) e f* ≈ 1e-17 a p = p* trattato come zero nel codice.
