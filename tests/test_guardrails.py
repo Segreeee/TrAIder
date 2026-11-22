@@ -35,3 +35,15 @@ def test_hypothesis_profile_is_deterministic():
 def test_real_metatrader5_cannot_be_imported():
     with pytest.raises(ImportError):
         importlib.import_module("MetaTrader5")
+
+
+def test_real_configuration_is_hidden_from_tests():
+    import os
+    from app.config import Settings
+    leaked = [n.upper() for n in Settings.model_fields if n.upper() in os.environ]
+    assert leaked == [], f"variabili reali visibili ai test: {leaked}"  # solo i nomi, mai i valori
+
+
+def test_real_env_file_is_not_read_by_tests():
+    from app.config import Settings
+    assert Settings().mt5_login == ""  # anche se il .env reale ha MT5_LOGIN
