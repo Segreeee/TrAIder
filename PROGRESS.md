@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 1 — Analisi delle alternative · **Aggiornato:** 2026-11-22 · **Prossima azione:** `/ecc:plan` con l'agente architect su D1–D12, output in `docs/ALTERNATIVE.md`.
+**Stato:** Fase 1 — in attesa di approvazione · **Aggiornato:** 2026-11-22 · **Prossima azione:** approvazione utente di D-001…D-012 e risposta a Q-001, Q-003, Q-004.
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -18,3 +18,4 @@ I passi della Fase 3 e successive vengono scritti qui in Fase 2, con l'agente pl
 
 ## Log
 - 2026-11-22: applicata la patch di sicurezza (commit `ab9c0b0` su main), creato il branch `ristrutturazione`. Fase 0 completata: 30 test verdi. Aggiunte le regole `permissions.deny` (verificate: il comando di prova viene bloccato).
+- 2026-11-22: Fase 1 scritta: `docs/ALTERNATIVE.md` (D1–D12, matrici pesate) e ADR D-001…D-012 in stato Proposta. Trovati 2 problemi di sicurezza nuovi (T-006, T-007) e una contraddizione nella specifica della Fase 4 (Q-004).
