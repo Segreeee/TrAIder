@@ -109,4 +109,4 @@ def test_dashboard_counts_only_cycles_after_preregistration(tmp_path):
     store.close()
     vm = viewmodel(load_archive(path), production_variant="v7-completo")
     assert vm["coverage"]["cycles_done"] == 1 and [s["symbol"] for s in vm["signals"]] == ["GBPUSD"]
-    assert PREREG_START.isoformat() == "2026-11-23T16:45:00+00:00"  # primo ciclo dopo il commit 8d8b8c2
+    assert PREREG_START.isoformat() == "2026-11-23T22:00:00+00:00"  # E3: primo ciclo dopo il commit f6ddcb1

@@ -94,3 +94,8 @@ Regola: nessuna modifica in corsa. Durante la raccolta non cambiano codice di de
   numero di TRADE di ciascuna variante. Nei campioni bootstrap in cui una variante non ha TRADE la statistica non è
   definita e il campione si scarta: l'IC di Δ R è quindi condizionato alla presenza di TRADE in entrambe, e lo si
   dichiara insieme al risultato. Chiarimento prudente: nessuna soglia cambia.
+- **E3 — 2026-11-23 (approvato dall'utente).** Difetto T-014: 11 pareri macro scartati dallo schema il 2026-11-23 (motivazioni
+  oltre 300 caratteri). Il prompt macro ora chiede frasi di al massimo 30 parole (commit f6ddcb1) e la sua versione
+  cambia. Invece di analizzare due serie (§7), la raccolta **riparte dalla candela che chiude alle 2026-11-23 22:00 UTC**,
+  la prima elaborata dal demone riavviato alle 21:54:45 UTC. I cicli dalle 16:45 alle 21:45 restano in archivio ma
+  fuori dall'analisi. La data di fine (2027-03-07), le soglie, le metriche e le regole di decisione non cambiano.

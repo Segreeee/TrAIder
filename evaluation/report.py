@@ -21,7 +21,7 @@ from evaluation.metrics import auc, brier, brier_skill, calibration_deciles, log
 
 PRIMARY, BASELINE = "v7-completo", "v2-tecnica"
 # §1 della preregistrazione: primo ciclo dopo il commit di approvazione 8d8b8c2 (16:41 UTC)
-PREREG_START = datetime(2026, 11, 23, 16, 45, tzinfo=timezone.utc)
+PREREG_START = datetime(2026, 11, 23, 22, 0, tzinfo=timezone.utc)  # E3: prima candela col prompt macro corretto
 PREREG_END = datetime(2027, 3, 7, tzinfo=timezone.utc)  # §1: fine della raccolta se le soglie non arrivano prima
 FINAL_MIN_CANDIDATES, FINAL_MIN_DAYS = 300, 30
 VERDICTS = ("gli LLM aggiungono valore", "gli LLM peggiorano", "non concludente")
