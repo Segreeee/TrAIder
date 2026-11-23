@@ -87,3 +87,10 @@ Regola: nessuna modifica in corsa. Durante la raccolta non cambiano codice di de
 ## Emendamenti (dopo l'approvazione, prima di raccogliere i dati)
 
 - **E1 — 2026-11-23 (D-018).** Il revisore giudice è un modello esterno via API (fornitore da scegliere, Q-001), non un modello locale. Si giudica un campione del 20% dei candidati, scelto con seme fisso; il giudice vede anche i titoli delle notizie. Senza un secondo giudice il kappa tra giudici non si calcola. Riguarda solo le metriche del giudice (§4), che è in ombra: metriche primarie, soglie e regole di decisione non cambiano.
+- **E2 — 2026-11-23 (approvato dall'utente).** Caso non definito dalla §6: se una delle due varianti (`v7-completo`
+  o `v2-tecnica`) non ha nessuna decisione TRADE con esito, la differenza di R netto non è calcolabile. In quel caso
+  la condizione su R netto si considera **non soddisfatta** e l'esito non può essere "gli LLM aggiungono valore":
+  al più "non concludente" (o "peggiorano" se l'IC di ΔBSS è tutto sotto 0). Il report mostra accanto a Δ R il
+  numero di TRADE di ciascuna variante. Nei campioni bootstrap in cui una variante non ha TRADE la statistica non è
+  definita e il campione si scarta: l'IC di Δ R è quindi condizionato alla presenza di TRADE in entrambe, e lo si
+  dichiara insieme al risultato. Chiarimento prudente: nessuna soglia cambia.
