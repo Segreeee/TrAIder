@@ -74,9 +74,14 @@ def test_no_module_imports_confidence():
 
 
 def test_dashboard_has_no_llm_or_broker_imports():
+    # P6.03: la garanzia passa dalla vecchia dashboard Streamlit (rimossa) a quella statica in report/
     forbidden = {"core.qwen_brain", "core.ensemble", "core.executor", "core.prompt_builder", "core.data_feed",
-                 "core.news_feed", "adapters.llm_openai", "adapters.mt5_broker", "adapters.mt5_data", "MetaTrader5"}
-    assert _imports(ROOT / "dashboard.py") & forbidden == set()
+                 "core.news_feed", "adapters.llm_openai", "adapters.mt5_broker", "adapters.mt5_data", "MetaTrader5",
+                 "app.run_once", "app.decide"}
+    for module in (ROOT / "report").glob("*.py"):
+        assert _imports(module) & forbidden == set(), module.name
+    assert not (ROOT / "dashboard.py").exists()
+    assert "streamlit" not in (ROOT / "requirements.txt").read_text(encoding="utf-8")
 
 
 # --- P3.31: moduli legacy rimossi --- #

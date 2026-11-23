@@ -241,3 +241,24 @@ def test_main_closes_the_archive(monkeypatch):
     assert _main_with(monkeypatch, _FakeMt5Module(), build_ports=lambda cfg, mt5: ports,
                       make_cycle=lambda cfg, p, v: (lambda close: None), code_version=lambda: "x") == 0
     assert closed == [True]
+
+
+def test_cycle_triggers_dashboard_generation(monkeypatch, caplog):
+    # P6.03: a fine ciclo la dashboard si rigenera; un errore della pagina non ferma il demone
+    import app.compose as compose
+    from types import SimpleNamespace
+    calls = []
+    monkeypatch.setattr(compose, "run_once", lambda *a, **k: None)
+    monkeypatch.setattr(compose, "resolve_pending", lambda *a, **k: 0)
+    monkeypatch.setattr(compose, "reconcile_broker", lambda *a: 0)
+
+    def write(db, out, variant, now):
+        calls.append((db, out, variant, now))
+        raise OSError("cartella sincronizzata non raggiungibile")
+
+    monkeypatch.setattr(compose, "write_dashboard", write)
+    cfg = Settings(_env_file=None, symbols="EURUSD", dashboard_path="D:/sync/dashboard.html")
+    compose.make_cycle(cfg, ports=SimpleNamespace(store=None, market=None, broker=None), code_version="x",
+                       clock=lambda: T0)(T0)
+    assert calls == [("data/traider.db", "D:/sync/dashboard.html", "v7-completo", T0)]
+    assert "cartella sincronizzata" in caplog.text

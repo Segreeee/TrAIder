@@ -117,3 +117,12 @@ def test_old_variable_names_in_env_file_fail(tmp_path):
     env.write_text("QWEN_API_KEY=x\n", encoding="utf-8")
     with pytest.raises(ValidationError):
         Settings(_env_file=env)
+
+
+def test_dashboard_path_does_not_change_the_series():
+    # P6.03: il test in avanti è in corso; un campo nuovo che cambiasse config_hash aprirebbe una nuova serie (§7).
+    # 27918a0189865d27 è l'hash della configurazione di default prima di questo campo.
+    custom = Settings(_env_file=None, dashboard_path="C:/Users/utente/OneDrive/traider/dashboard.html")
+    assert custom.config_hash() == Settings(_env_file=None).config_hash() == "27918a0189865d27"
+    assert "dashboard_path" not in custom.public_config()  # percorso personale: non va in archivio
+    assert Settings(_env_file=None).dashboard_path == "data/dashboard.html"

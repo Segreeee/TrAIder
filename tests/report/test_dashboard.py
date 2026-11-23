@@ -67,3 +67,27 @@ def test_stale_daemon_is_flagged(db):  # noqa: F811
     fresh = render(vm, generated_at=datetime.fromisoformat(vm["last_cycle"]))
     stale = render(vm, generated_at=datetime(2026, 12, 2, 13, 0, tzinfo=timezone.utc))
     assert "nessun ciclo da" not in fresh and "nessun ciclo da" in stale
+
+
+def test_write_dashboard_creates_page_and_folder(db, tmp_path):  # noqa: F811
+    from report.dashboard import write_dashboard
+    out = tmp_path / "sincronizzata" / "dashboard.html"
+    write_dashboard(db, out, "v7-completo", NOW)
+    assert out.read_text(encoding="utf-8").startswith("<!doctype html>")
+
+
+def test_atomic_write_no_partial_file(db, tmp_path, monkeypatch):  # noqa: F811
+    import report.dashboard as dash
+    out = tmp_path / "dashboard.html"
+    out.write_text("pagina precedente", encoding="utf-8")
+
+    def broken(*a, **k):
+        raise RuntimeError("rendering fallito a metà")
+
+    monkeypatch.setattr(dash, "render", broken)
+    try:
+        dash.write_dashboard(db, out, "v7-completo", NOW)
+    except RuntimeError:
+        pass
+    assert out.read_text(encoding="utf-8") == "pagina precedente"  # il telefono non vede mai una pagina a metà
+    assert [p.name for p in tmp_path.iterdir()] == ["dashboard.html"]  # nessun file temporaneo lasciato
