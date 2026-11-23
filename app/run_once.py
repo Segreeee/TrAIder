@@ -114,6 +114,10 @@ def _bars(df: pd.DataFrame) -> list[dict]:
 def run_once(symbol: str, candle_close: datetime, ports: Ports, cfg: Settings, code_version: str = "dev") -> CycleReport:
     if candle_close.tzinfo is None:
         raise ValueError("candle_close deve avere il fuso orario")
+    if _market_closed(symbol, candle_close, ports, cfg):
+        log.info("%s: mercato chiuso alla candela %s (ultima barra più vecchia), salto senza archiviare",
+                 symbol, candle_close)
+        return CycleReport("skipped")
     cycle = ports.store.begin_cycle(symbol, candle_close)
     if cycle is None:
         log.info("%s: candela %s già elaborata, salto", symbol, candle_close)
@@ -159,6 +163,16 @@ def run_once(symbol: str, candle_close: datetime, ports: Ports, cfg: Settings, c
         raise
     _close(symbol, cycle, report, ports, cfg, code_version)
     return report
+
+
+def _market_closed(symbol: str, candle_close: datetime, ports: Ports, cfg: Settings) -> bool:
+    """Ultima barra chiusa indietro di più di una candela: weekend o festività, non un ritardo. Un errore di lettura
+    qui non decide nulla: lo archivia il ciclo vero e proprio."""
+    try:
+        last = ports.market.closed_bars(symbol, cfg.timeframe, 1)
+    except Exception:
+        return False
+    return bool(last.empty or last["timestamp"].iloc[-1] + M15 < candle_close - M15)
 
 
 def _close(symbol: str, cycle: int, report: CycleReport, ports: Ports, cfg: Settings, code_version: str) -> None:

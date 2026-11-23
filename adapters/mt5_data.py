@@ -2,7 +2,7 @@
 non importa MetaTrader5; lo fa solo la composizione all'avvio. Solo lettura, nessun ordine."""
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Optional
 
 import pandas as pd
@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 _TIMEFRAMES = {"M15": ("TIMEFRAME_M15", 15), "H1": ("TIMEFRAME_H1", 60)}
 COLUMNS = ["timestamp", "open", "high", "low", "close", "volume", "spread"]
 QUOTE_WAIT_S, QUOTE_TRIES = 0.1, 10   # attesa della prima quotazione dopo symbol_select: ~1 s in tutto
+BAR_WAIT_S, BAR_TRIES = 1.0, 10       # attesa della barra nuova quando il primo tick tarda: ~10 s in tutto
 
 
 class Mt5Data:
@@ -43,8 +44,27 @@ class Mt5Data:
             raise ValueError(f"timeframe non supportato: {timeframe}")
         if not self._mt5.symbol_select(symbol, True):
             raise RuntimeError(f"simbolo non disponibile: {symbol}")
+        df = self._read(symbol, timeframe.upper(), count)
+        # Indietro di una sola barra: il primo tick della barra nuova non è ancora arrivato (pochi secondi dopo
+        # la chiusura, rollover). Si attende un poco; più indietro di così è mercato chiuso e non si aspetta.
+        for _ in range(BAR_TRIES):
+            if not self._one_bar_late(df, _TIMEFRAMES[timeframe.upper()][1]):
+                break
+            self._sleep(BAR_WAIT_S)
+            df = self._read(symbol, timeframe.upper(), count)
+        return df
+
+    def _one_bar_late(self, df: pd.DataFrame, tf_min: int) -> bool:
+        if df.empty:
+            return False
+        step = timedelta(minutes=tf_min)
+        now = self._clock()
+        current_open = datetime.fromtimestamp(int(now.timestamp()) // (tf_min * 60) * tf_min * 60, timezone.utc)
+        return bool(df["timestamp"].iloc[-1].to_pydatetime() == current_open - 2 * step)
+
+    def _read(self, symbol: str, timeframe: str, count: int) -> pd.DataFrame:
         offset = self._server_offset(symbol)
-        const = getattr(self._mt5, _TIMEFRAMES[timeframe.upper()][0])
+        const = getattr(self._mt5, _TIMEFRAMES[timeframe][0])
         rates = self._mt5.copy_rates_from_pos(symbol, const, 1, count)  # posizione 0 = candela in formazione
         if rates is None or len(rates) == 0:
             raise RuntimeError(f"nessuna candela per {symbol} {timeframe}: {self._mt5.last_error()}")
