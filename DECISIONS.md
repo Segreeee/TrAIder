@@ -105,8 +105,14 @@ Le analisi complete con le matrici stanno in `docs/ALTERNATIVE.md`.
 - **Conseguenze:** P5.04 si riduce alla disponibilità delle varianti 4/5 nel report; la preregistrazione la esclude.
 - **Cosa farebbe cambiare idea:** serve un confronto quantitativo con il vecchio sistema per il portfolio → nuova serie dedicata, mai a metà della raccolta.
 
+### D-018 — Giudice su API esterna, campione del 20% con seme  ·  Stato: Accettata  ·  2026-11-23  ·  Sostituisce in parte D-012
+- **Contesto:** D-012 prevedeva un giudice locale di un'altra famiglia (in lotti) più un giudice remoto sul 20%.
+- **Decisione e motivo (utente):** il giudice è un modello esterno via API (client OpenAI-compatibile, `REMOTE_JUDGE_*` nel .env); il fornitore resta da scegliere (Q-001). Si giudica un campione del 20% dei candidati, scelto con seme, per contenere il costo: 5 chiamate per candidato (3 ripetizioni, ordine invertito, ruoli nominati). Il giudice vede anche i titoli delle notizie (l'utente accetta che escano verso il fornitore, uso privato T-008).
+- **Conseguenze:** senza un secondo giudice il kappa tra giudici non si calcola (la regola "kappa < 0.4 archivia" non scatta); le soglie di promozione di D-012 restano e si raggiungono più lentamente. Nessun test usa l'API: solo FakeLlm.
+- **Cosa farebbe cambiare idea:** costo mensile oltre il budget dell'utente → campione più piccolo; un secondo fornitore disponibile → kappa tra giudici.
+
 ## Domande aperte
-- Q-001 — Fornitore del giudice remoto (campione 20%, D-012): lo sceglie l'utente. Fino ad allora solo giudice locale. Non blocca la Fase 2: la porta LLM è indipendente dal fornitore.
+- Q-001 — Fornitore del giudice esterno (D-018): lo sceglie l'utente. Fino ad allora il giudice non gira (P5.08 salta senza configurazione). La porta LLM è indipendente dal fornitore.
 - Q-005 — Soglia di attivazione del modello logistico (2026-11-22, P3.26). La regola della specifica "Brier skill score > 0 fuori campione" si attiva **per caso**: con caratteristiche senza informazione (600 esiti, split 70/30) il BSS esce positivo in 4 semi su 10 (0.0002, 0.0015, 0.0044, 0.0096). Il gate su EV_5 resta una seconda protezione (il p5 da bootstrap è prudente), ma la regola da sola non distingue segnale da rumore. Proposte: (a) estremo inferiore di un intervallo bootstrap al 90% del BSS > 0; (b) soglia fissa, es. BSS ≥ 0.01; (c) test di rapporto di verosimiglianza contro β = 0 con p < 0.05. Raccomandazione: (a), coerente con l'uso di p5 nel gate. Il test `test_uninformative_features_keep_beta` è segnato xfail strict finché non si decide. **Chiusa il 2026-11-22: l'utente sceglie (a).**
 
 ## Domande chiuse

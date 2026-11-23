@@ -83,3 +83,7 @@ Regola: nessuna modifica in corsa. Durante la raccolta non cambiano codice di de
 - Ora legale del server non gestita per barre precedenti al cambio (T-011): da qui la data di fine.
 - Un solo modello locale (gemma3:12b) per tecnico e macro (D-004).
 - Con il gate chiuso (p = p0 finché la Beta non si sposta) i trade eseguiti in simulazione saranno pochi: la metrica primaria 2 usa le decisioni virtuali di ogni variante.
+
+## Emendamenti (dopo l'approvazione, prima di raccogliere i dati)
+
+- **E1 — 2026-11-23 (D-018).** Il revisore giudice è un modello esterno via API (fornitore da scegliere, Q-001), non un modello locale. Si giudica un campione del 20% dei candidati, scelto con seme fisso; il giudice vede anche i titoli delle notizie. Senza un secondo giudice il kappa tra giudici non si calcola. Riguarda solo le metriche del giudice (§4), che è in ombra: metriche primarie, soglie e regole di decisione non cambiano.
