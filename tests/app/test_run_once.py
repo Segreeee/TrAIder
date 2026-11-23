@@ -259,3 +259,20 @@ def test_stale_bars_close_cycle_as_error_before_llm():
     report = run_once("EURUSD", CLOSE + timedelta(minutes=15), ports, _cfg())
     assert report.status == "error" and "non ancora disponibile" in report.error
     assert ports.technical.calls == [] and ports.store.candidates == {}
+
+
+class _Interrupted:
+    model, model_digest = "fake-llm", "sha256:fake"
+
+    def complete(self, system, user, *, temperature):
+        raise KeyboardInterrupt  # Ctrl+C durante una chiamata LLM di 2 minuti
+
+
+def test_interrupt_closes_cycle_as_error_then_propagates():
+    # review di fine Fase 3 (R7): il ciclo restava 'running' e quella candela non si rifaceva mai più
+    ports = _ports(tech=_Interrupted())
+    with pytest.raises(KeyboardInterrupt):
+        run_once("EURUSD", CLOSE, ports, _cfg())
+    finished = ports.store.finished[1]
+    assert finished["status"] == "error" and "KeyboardInterrupt" in finished["error"]
+    assert json.loads(finished["input_json"])["symbol"] == "EURUSD"
