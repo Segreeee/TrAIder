@@ -53,3 +53,12 @@ def test_prompt_version_changes_with_template():
     assert prompt_version("a {x}") == prompt_version("a {x}")
     assert TECHNICAL_PROMPT_VERSION.startswith("tecnico-") and MACRO_PROMPT_VERSION.startswith("macro-")
     assert TECHNICAL_PROMPT_VERSION != MACRO_PROMPT_VERSION
+
+
+def test_macro_prompt_states_a_length_limit_within_the_schema():
+    """T-014: il macro scriveva più frasi in una motivazione (354 caratteri) e lo schema la scartava;
+    a temperatura 0 il retry ripete la stessa risposta, quindi il limite va detto nel prompt."""
+    from app.extractors import AnalystView
+    limit = AnalystView.model_fields["motivazioni"].annotation.__args__[0].__metadata__[0].max_length
+    stated = re.search(r"(\d+) caratteri", _text(build_macro_prompt("EURUSD", NEWS)))
+    assert stated and int(stated.group(1)) <= limit * 2 // 3  # margine: il modello non conta i caratteri
