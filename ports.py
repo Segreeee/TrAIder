@@ -215,6 +215,10 @@ class SignalStore(Protocol):
         """slippage_pips: fill contro il prezzo del candidato, positivo = sfavorevole."""
         ...
 
+    def open_sim_positions(self) -> list[Position]:
+        """Posizioni del broker simulato: esecuzioni 'sim' accettate senza esito virtuale (D-016)."""
+        ...
+
     def open_broker_trades(self) -> list[tuple[int, CandidateRecord, int, float, float]]:
         """(candidate_id, record, ticket, lotti, prezzo di fill) degli ordini MT5 accettati senza esito del broker."""
         ...

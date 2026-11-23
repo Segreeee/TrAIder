@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from domain.types import Candidate, Direction
-from ports import CandidateRecord, ClosedTrade, Fill, LlmResult, Outcome
+from ports import CandidateRecord, ClosedTrade, Fill, LlmResult, Outcome, Position
 
 SCHEMA = Path(__file__).with_name("schema.sql")
 
@@ -94,6 +94,14 @@ class SqliteStore:
             " commission, reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (candidate_id, fill.mode, int(fill.accepted), fill.ticket, lots, fill.fill_price, fill.spread,
              slippage_pips, fill.commission, fill.reason or None))
+
+    def open_sim_positions(self) -> list[Position]:
+        rows = self.conn.execute(
+            "SELECT y.symbol, k.direction, e.lots, e.fill_price, k.sl, k.tp, e.ticket FROM executions e"
+            " JOIN candidates k USING (candidate_id) JOIN cycles y USING (cycle_id)"
+            " WHERE e.mode = 'sim' AND e.accepted = 1"
+            " AND e.candidate_id NOT IN (SELECT candidate_id FROM outcomes) ORDER BY e.candidate_id").fetchall()
+        return [Position(s, Direction(d), lots, price, sl, tp, ticket) for s, d, lots, price, sl, tp, ticket in rows]
 
     def open_broker_trades(self) -> list[tuple[int, CandidateRecord, int, float, float]]:
         rows = self.conn.execute(

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 
-from ports import CandidateRecord, LlmResponse, NewsItem, Outcome
+from ports import CandidateRecord, LlmResponse, NewsItem, Outcome, Position
 
 
 class FakeMt5:
@@ -180,6 +180,14 @@ class FakeStore:
 
     def record_execution(self, candidate_id: int, fill, lots: float, slippage_pips=None) -> None:
         self.executions.append((candidate_id, fill, lots, slippage_pips))
+
+    def open_sim_positions(self):
+        out = []
+        for cid, fill, lots, _ in self.executions:
+            if fill.mode == "sim" and fill.accepted and cid not in self.outcomes:
+                c = self.candidates[cid][1].candidate
+                out.append(Position(c.symbol, c.direction, lots, fill.fill_price, c.sl, c.tp, fill.ticket))
+        return out
 
     def open_broker_trades(self):
         return [(cid, self.candidates[cid][1], fill.ticket, lots, fill.fill_price)

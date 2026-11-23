@@ -189,3 +189,10 @@ def test_live_news_provider_is_cached():
     from adapters.news_cache import CachedNews
     cfg = Settings(_env_file=None, news_provider="finnhub", finnhub_api_key="k")
     assert isinstance(_news(cfg), CachedNews)
+
+
+def test_sim_broker_reads_positions_from_the_archive(tmp_path):
+    # R4 / D-016: nel demone il broker simulato legge le posizioni aperte dall'archivio composto
+    ports = _build(tmp_path)
+    assert ports.broker.positions() == ports.store.open_sim_positions() == []
+    assert ports.broker._open_positions == ports.store.open_sim_positions

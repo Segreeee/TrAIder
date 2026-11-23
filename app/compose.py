@@ -69,16 +69,18 @@ def build_ports(cfg: Settings, mt5, digest_of: Optional[Callable[[str], str]] = 
         return OpenAiLlm(client, model=model, model_digest=digest_of(model), seed=cfg.llm_seed)
 
     Path(cfg.db_path).parent.mkdir(parents=True, exist_ok=True)
+    store = SqliteStore(cfg.db_path, clock)
     broker = broker_from_settings(
         cfg,
         make_live=lambda: Mt5Broker(mt5, magic=cfg.magic_number, live_allowed=True, clock=clock),
         make_sim=lambda: SimBroker(quote=market.tick, equity=cfg.account_balance,
-                                   commission_eur_per_lot=cfg.commission_eur_per_lot or 0.0),
+                                   commission_eur_per_lot=cfg.commission_eur_per_lot or 0.0,
+                                   open_positions=store.open_sim_positions),  # D-016
     )
     log.info("composizione: broker %s, notizie %s, archivio %s",
              type(broker).__name__, cfg.news_provider, cfg.db_path)
     return Ports(market=market, news=_news(cfg), technical=llm(cfg.model_technical), macro=llm(cfg.model_macro),
-                 store=SqliteStore(cfg.db_path, clock), broker=broker)
+                 store=store, broker=broker)
 
 
 def make_cycle(cfg: Settings, ports: Ports, code_version: str,
