@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** P5.07 (giudice alla cieca: prompt e schema). In attesa [UTENTE]: approvazione di docs/PREREGISTRAZIONE.md, che sblocca P5.10.
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** P5.09 (metriche del giudice su dati sintetici). In attesa [UTENTE]: approvazione di docs/PREREGISTRAZIONE.md (sblocca P5.10) e scelta del modello del giudice di un'altra famiglia (sblocca P5.08).
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -968,3 +968,4 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-23: D-017: variante 6 non realizzata (scelta dell'utente); P5.04 ridotto alla disponibilità delle varianti 4/5, che il report mostra; preregistrazione aggiornata.
 - 2026-11-23: P5.04 (ridotto da D-017) e P5.05 fatti: evaluation/report.py (b9b2644 e f1c0753 RED, poi GREEN). Sull'archivio reale: 24 cicli completati, 6 in errore, 7 candidati risolti in un giorno, esito non concludente come atteso. 448 test verdi; copertura domain + evaluation 98%.
 - 2026-11-23: P5.06 fatto: refactor virtual_outcome (4f1dd74), evaluation/backtest.py (41aa6e9 RED, bdfce3b GREEN). Varianti LLM rifiutate, walk-forward verificato con una spia sullo stimatore, esiti identici a resolve_pending. 452 test verdi, copertura domain + evaluation 98%.
+- 2026-11-23: P5.07 fatto: evaluation/judge.py (d681880 RED, 6528344 GREEN): schema chiuso, prompt alla cieca con ordine a seme, controlli deterministici, veto che solo toglie.
