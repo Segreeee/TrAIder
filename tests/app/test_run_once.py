@@ -250,3 +250,12 @@ def test_logs_llm_start_before_waiting(caplog):
     caplog.set_level("INFO")
     run_once("EURUSD", CLOSE, _ports(), _cfg())
     assert any("tecnico" in m and "fake-llm" in m for m in _messages(caplog))
+
+
+def test_stale_bars_close_cycle_as_error_before_llm():
+    # review di fine Fase 3 (R6): se MT5 non ha ancora la barra nuova, l'ultima barra chiusa è quella
+    # precedente; il ciclo decideva su dati vecchi di una candela registrandoli come se fossero nuovi
+    ports = _ports()
+    report = run_once("EURUSD", CLOSE + timedelta(minutes=15), ports, _cfg())
+    assert report.status == "error" and "non ancora disponibile" in report.error
+    assert ports.technical.calls == [] and ports.store.candidates == {}
