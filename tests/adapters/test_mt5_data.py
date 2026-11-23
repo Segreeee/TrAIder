@@ -80,3 +80,32 @@ def test_eur_quote_rate_uses_conversion_symbol():
 
 def test_tick_returns_bid_ask():
     assert _data(FakeMt5(NOW)).tick("EURUSD") == (1.10000, 1.10008)
+
+
+class _MarketWatchMt5(FakeMt5):
+    """Come il vero MT5: un simbolo fuori dal Market Watch non ha tick finché non viene selezionato,
+    e un simbolo inesistente presso il broker non si seleziona."""
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.selected: set[str] = set()
+
+    def symbol_select(self, symbol, enable):
+        if symbol not in self.ticks:
+            return False
+        self.selected.add(symbol)
+        return True
+
+    def symbol_info_tick(self, symbol):
+        return super().symbol_info_tick(symbol) if symbol in self.selected else None
+
+
+def test_conversion_symbol_selected_before_tick():
+    # Primo avvio reale (P3.28): EURCAD/EURCHF non erano nel Market Watch -> "nessun tick" e ciclo fallito.
+    mt5 = _MarketWatchMt5(NOW, ticks={"EURCAD": (1.50000, 1.50020)})
+    assert _data(mt5).eur_quote_rate("USDCAD") == pytest.approx(1.50010)
+
+
+def test_tick_unknown_symbol_raises_clearly():
+    with pytest.raises(RuntimeError, match="simbolo non disponibile: EURXYZ"):
+        _data(_MarketWatchMt5(NOW)).tick("EURXYZ")
