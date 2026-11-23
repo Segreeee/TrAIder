@@ -7,6 +7,7 @@ Ogni variante stima p e p5 dal proprio storico risolto (Q-004: anche i candidati
   p5 da bootstrap.
 Caratteristiche mancanti (LLM non chiamato o non valido) valgono 0, il centro della loro scala.
 """
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
@@ -18,6 +19,8 @@ from domain.logistic import bss_lower_bound, choose_model, fit_offset_logistic, 
 from domain.probability import beta_posterior, p0
 from domain.types import Candidate
 from ports import CandidateRecord, Outcome
+
+log = logging.getLogger(__name__)
 
 TECH = ("momentum", "rsi_dev", "macd_hist_atr")
 BOOTSTRAP, SEED, TEST_SHARE = 100, 0, 0.3
@@ -90,7 +93,11 @@ def estimate(variant: Variant, cand: Candidate, features: dict,
     if variant.consensus:
         decided = [(r, o) for r, o in decided if _agree(r.features)]
     if len(decided) >= cfg.min_trades_for_model:
-        est = _logistic(variant, _x(features, variant.features), float(logit(base)), decided, cfg)
+        try:
+            est = _logistic(variant, _x(features, variant.features), float(logit(base)), decided, cfg)
+        except RuntimeError as exc:  # ottimizzatore non convergente: si usa la Beta, che esiste sempre
+            log.warning("%s: %s, uso la Beta", variant.name, exc)
+            est = None
         if est is not None:
             return Estimate(est.p, est.p5, est.model, consensus)
     wins = sum(o.result == "TP" for _, o in decided)
