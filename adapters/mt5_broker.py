@@ -12,7 +12,7 @@ from typing import Callable
 from domain.costs import distance_pips
 from domain.pip import pip_size
 from domain.types import Direction, levels_consistent
-from ports import AccountState, Fill, OrderRequest, Position
+from ports import AccountState, ClosedTrade, Fill, OrderRequest, Position
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +59,25 @@ class Mt5Broker:
         if result is None or result.retcode != m.TRADE_RETCODE_DONE:
             code = getattr(result, "retcode", None)
             return refuse(f"rifiutato dal terminale (retcode {code}): {getattr(result, 'comment', m.last_error())}")
-        return Fill("mt5", True, float(getattr(result, "price", 0) or price), ask - bid, int(result.order))
+        ticket = int(result.order)
+        entry = [d for d in self._deals(ticket) if d.entry == self.DEAL_ENTRY_IN]
+        commission = sum(float(d.commission) for d in entry) if entry else None
+        return Fill("mt5", True, float(getattr(result, "price", 0) or price), ask - bid, ticket, commission=commission)
+
+    DEAL_ENTRY_IN, DEAL_ENTRY_OUT = 0, 1
+
+    def _deals(self, ticket: int) -> list:
+        return [d for d in (self._mt5.history_deals_get(position=ticket) or [])
+                if getattr(d, "magic", None) == self._magic]
+
+    def closed_trade(self, ticket: int):
+        deals = self._deals(ticket)
+        out = [d for d in deals if d.entry == self.DEAL_ENTRY_OUT]
+        if not out:
+            return None  # aperta, o ticket non nostro
+        return ClosedTrade(exit_price=float(out[-1].price), profit_eur=sum(float(d.profit) for d in deals),
+                           commission_eur=sum(float(d.commission) for d in deals),
+                           swap_eur=sum(float(d.swap) for d in deals))
 
     def _our_positions(self):
         return [p for p in (self._mt5.positions_get() or []) if getattr(p, "magic", None) == self._magic]

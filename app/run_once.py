@@ -24,8 +24,8 @@ from domain.exposure import daily_loss_limit_reached
 from domain.news import visible_news
 from domain.pip import pip_size, pip_value_eur
 from domain.probability import p0
-from domain.types import Candidate
-from ports import (AccountState, Broker, CandidateRecord, Llm, MarketData, NewsFeed, OrderRequest, SignalStore,
+from domain.types import Candidate, Direction
+from ports import (AccountState, Broker, CandidateRecord, Fill, Llm, MarketData, NewsFeed, OrderRequest, SignalStore,
                    build_broker, call_validated)
 
 log = logging.getLogger(__name__)
@@ -96,7 +96,15 @@ def _decide_all(symbol: str, cycle: int, cand: Candidate, last_bar: pd.Series, a
             report.decision, report.hold_reason = d.decision, reason
             if d.decision == "TRADE":
                 fill = ports.broker.submit(OrderRequest(symbol, cand.direction, d.lot, cand.sl, cand.tp))
-                ports.store.record_execution(cid, fill, d.lot)
+                ports.store.record_execution(cid, fill, d.lot, _slippage_pips(cand, fill, pip))
+
+
+def _slippage_pips(cand: Candidate, fill: Fill, pip: float) -> Optional[float]:
+    """Fill contro il prezzo del candidato, in pip; positivo = sfavorevole. None se l'ordine non è passato."""
+    if not fill.accepted:
+        return None
+    sign = 1 if cand.direction is Direction.BUY else -1
+    return sign * (fill.fill_price - cand.entry) / pip
 
 
 def _bars(df: pd.DataFrame) -> list[dict]:

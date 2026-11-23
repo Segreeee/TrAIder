@@ -22,6 +22,7 @@ class FakeMt5:
         self.rate_calls: list[tuple[int, int]] = []
         self.sent, self.open_positions, self.deals = [], [], []
         self.equity, self.retcode = 1000.0, self.TRADE_RETCODE_DONE
+        self.commission_per_lot_side = 0.0
 
     def symbol_select(self, symbol, enable):
         return True
@@ -58,6 +59,7 @@ class FakeMt5:
             self.open_positions.append(SimpleNamespace(
                 symbol=request["symbol"], type=request["type"], volume=request["volume"], price_open=request["price"],
                 sl=request["sl"], tp=request["tp"], magic=request["magic"], ticket=len(self.sent), profit=0.0))
+            self._deal(len(self.sent), 0, request["price"], request["volume"], request["magic"], 0.0, 0.0)
         return SimpleNamespace(retcode=self.retcode, price=request["price"], order=len(self.sent), comment="fake")
 
     def positions_get(self):
@@ -66,8 +68,18 @@ class FakeMt5:
     def account_info(self):
         return SimpleNamespace(equity=self.equity)
 
-    def history_deals_get(self, start, end):
-        return list(self.deals)
+    def history_deals_get(self, start=None, end=None, *, position=None):
+        return [d for d in self.deals if position is None or getattr(d, "position_id", None) == position]
+
+    def _deal(self, position, entry, price, volume, magic, profit, swap):
+        self.deals.append(SimpleNamespace(position_id=position, entry=entry, price=price, volume=volume, magic=magic,
+                                          profit=profit, swap=swap, commission=self.commission_per_lot_side * volume))
+
+    def close_position(self, ticket, price, profit, swap=0.0):
+        """Chiusura al broker (TP, SL o manuale): via dalle posizioni, deal di uscita nello storico."""
+        (pos,) = [p for p in self.open_positions if p.ticket == ticket]
+        self.open_positions.remove(pos)
+        self._deal(ticket, 1, price, pos.volume, pos.magic, profit, swap)
 
 
 class FakeLlm:
@@ -136,6 +148,7 @@ class FakeStore:
         self.llm_calls: list[tuple] = []
         self.candidates: dict[int, tuple[int, CandidateRecord]] = {}
         self.executions: list[tuple] = []
+        self.broker_outcomes: dict[int, tuple] = {}
         self.outcomes: dict[int, Outcome] = {}
         self.finished: dict[int, dict] = {}
 
@@ -165,8 +178,23 @@ class FakeStore:
         self.candidates[cid] = (cycle_id, record)
         return cid
 
-    def record_execution(self, candidate_id: int, fill, lots: float) -> None:
-        self.executions.append((candidate_id, fill, lots))
+    def record_execution(self, candidate_id: int, fill, lots: float, slippage_pips=None) -> None:
+        self.executions.append((candidate_id, fill, lots, slippage_pips))
+
+    def open_broker_trades(self):
+        return [(cid, self.candidates[cid][1], fill.ticket, lots, fill.fill_price)
+                for cid, fill, lots, _ in self.executions
+                if fill.mode == "mt5" and fill.accepted and cid not in self.broker_outcomes]
+
+    def record_broker_outcome(self, candidate_id, closed, r_gross, r_net) -> bool:
+        if candidate_id in self.broker_outcomes:
+            return False
+        self.broker_outcomes[candidate_id] = (closed, r_gross, r_net)
+        return True
+
+    def reconciliations(self):
+        return [(cid, self.outcomes[cid].r_net, b[2]) for cid, b in sorted(self.broker_outcomes.items())
+                if cid in self.outcomes and self.outcomes[cid].resolved_by == "virtuale"]
 
     def record_outcome(self, candidate_id: int, outcome: Outcome) -> bool:
         if candidate_id in self.outcomes:

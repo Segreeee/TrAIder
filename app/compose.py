@@ -19,7 +19,7 @@ from adapters.null_news import NullNews, StaticNews
 from adapters.sim_broker import SimBroker
 from adapters.sqlite_store import SqliteStore
 from app.config import Settings
-from app.resolve import resolve_pending
+from app.resolve import reconcile_broker, resolve_pending
 from app.run_once import Ports, broker_from_settings, run_once
 
 log = logging.getLogger(__name__)
@@ -69,7 +69,8 @@ def build_ports(cfg: Settings, mt5, digest_of: Optional[Callable[[str], str]] = 
     broker = broker_from_settings(
         cfg,
         make_live=lambda: Mt5Broker(mt5, magic=cfg.magic_number, live_allowed=True, clock=clock),
-        make_sim=lambda: SimBroker(quote=market.tick, equity=cfg.account_balance),
+        make_sim=lambda: SimBroker(quote=market.tick, equity=cfg.account_balance,
+                                   commission_eur_per_lot=cfg.commission_eur_per_lot or 0.0),
     )
     log.info("composizione: broker %s, notizie %s, archivio %s",
              type(broker).__name__, cfg.news_provider, cfg.db_path)
@@ -88,4 +89,8 @@ def make_cycle(cfg: Settings, ports: Ports, code_version: str,
             resolve_pending(ports.store, ports.market, clock())
         except Exception:  # si riprova alla candela successiva: gli esiti non scadono
             log.exception("risoluzione virtuale fallita")
+        try:
+            reconcile_broker(ports.store, ports.broker, ports.market)
+        except Exception:
+            log.exception("riconciliazione con il broker fallita")
     return cycle

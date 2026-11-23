@@ -55,3 +55,13 @@ def simulate_outcome(action: str, tp: float, sl: float, future_df: pd.DataFrame)
     if len(future_df) == 0:
         return "TIMEOUT", None
     return "TIMEOUT", float(future_df.iloc[-1]["close"])
+
+
+RECONCILIATION_MAX_GAP_R = 0.1  # D-008: oltre questo scarto il simulatore va rivisto con una nuova ADR
+
+
+def reconciliation_gap(virtual_r: float, broker_r: float,
+                       threshold: float = RECONCILIATION_MAX_GAP_R) -> tuple[float, bool]:
+    """Scarto in R tra esito del broker ed esito virtuale dello stesso candidato, e se supera la soglia."""
+    gap = broker_r - virtual_r
+    return gap, abs(gap) > threshold

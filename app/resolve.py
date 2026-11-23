@@ -10,8 +10,8 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 from domain.outcome import first_hit, realized_result
-from domain.pip import pip_size
-from ports import MarketData, Outcome, SignalStore
+from domain.pip import pip_size, pip_value_eur
+from ports import Broker, MarketData, Outcome, SignalStore
 
 HORIZON, MAX_BARS, MARGIN = 96, 5000, 5
 M15 = timedelta(minutes=15)
@@ -45,4 +45,21 @@ def resolve_pending(store: SignalStore, market: MarketData, now: datetime, horiz
             exit_close = future["timestamp"].iloc[i].to_pydatetime() + M15
             written += store.record_outcome(cid, Outcome(result, exit_price, r["r_multiple"], r["r_multiple_gross"],
                                                          "virtuale", exit_close))
+    return written
+
+
+def reconcile_broker(store: SignalStore, broker: Broker, market: MarketData) -> int:
+    """Esiti del broker per gli ordini MT5 chiusi (P3.34), accanto a quelli virtuali; restituisce quanti ne scrive.
+    R misurato dal prezzo di fill e sulla sua distanza dallo stop; R netto con commissione e swap veri."""
+    written = 0
+    for cid, rec, ticket, lots, fill_price in store.open_broker_trades():
+        closed = broker.closed_trade(ticket)
+        if closed is None:
+            continue  # ancora aperta: si riprova al prossimo ciclo
+        c, pip = rec.candidate, pip_size(rec.candidate.symbol)
+        gross = realized_result(c.direction.value, fill_price, closed.exit_price, c.sl, pip, 0.0)["r_multiple_gross"]
+        # ponytail: cambio EUR di adesso, non dell'ingresso; scarto < 1% sul valore del pip in un orizzonte di 24 h
+        risk_eur = abs(fill_price - c.sl) / pip * pip_value_eur(c.symbol, market.eur_quote_rate(c.symbol), lots)
+        net = round(gross + (closed.commission_eur + closed.swap_eur) / risk_eur, 3)
+        written += store.record_broker_outcome(cid, closed, gross, net)
     return written

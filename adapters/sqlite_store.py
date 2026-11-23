@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from domain.types import Candidate, Direction
-from ports import CandidateRecord, Fill, LlmResult, Outcome
+from ports import CandidateRecord, ClosedTrade, Fill, LlmResult, Outcome
 
 SCHEMA = Path(__file__).with_name("schema.sql")
 
@@ -87,12 +87,36 @@ class SqliteStore:
              record.p0, record.p5, record.lot, _gate_passed(record.hold_reason), json.dumps(record.features)))
         return cur.lastrowid
 
-    def record_execution(self, candidate_id: int, fill: Fill, lots: float) -> None:
+    def record_execution(self, candidate_id: int, fill: Fill, lots: float,
+                         slippage_pips: Optional[float] = None) -> None:
         self._insert(
-            "INSERT INTO executions (candidate_id, mode, accepted, ticket, lots, fill_price, spread, reason)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO executions (candidate_id, mode, accepted, ticket, lots, fill_price, spread, slippage,"
+            " commission, reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (candidate_id, fill.mode, int(fill.accepted), fill.ticket, lots, fill.fill_price, fill.spread,
-             fill.reason or None))
+             slippage_pips, fill.commission, fill.reason or None))
+
+    def open_broker_trades(self) -> list[tuple[int, CandidateRecord, int, float, float]]:
+        rows = self.conn.execute(
+            f"SELECT {self._RECORD_COLUMNS}, e.ticket, e.lots, e.fill_price FROM executions e"
+            " JOIN candidates k USING (candidate_id) JOIN cycles y USING (cycle_id)"
+            " WHERE e.mode = 'mt5' AND e.accepted = 1"
+            " AND e.candidate_id NOT IN (SELECT candidate_id FROM broker_outcomes) ORDER BY e.candidate_id").fetchall()
+        return [(r[0], self._to_record(r), r[-3], r[-2], r[-1]) for r in rows]
+
+    def record_broker_outcome(self, candidate_id: int, closed: ClosedTrade, r_gross: float, r_net: float) -> bool:
+        if self.conn.execute("SELECT 1 FROM broker_outcomes WHERE candidate_id = ?", (candidate_id,)).fetchone():
+            return False
+        self._insert(
+            "INSERT INTO broker_outcomes (candidate_id, detected_utc, exit_price, profit_eur, commission_eur, swap_eur,"
+            " r_gross, r_net) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (candidate_id, _iso(self._clock()), closed.exit_price, closed.profit_eur, closed.commission_eur,
+             closed.swap_eur, r_gross, r_net))
+        return True
+
+    def reconciliations(self) -> list[tuple[int, float, float]]:
+        return [tuple(r) for r in self.conn.execute(
+            "SELECT b.candidate_id, o.r_net, b.r_net FROM broker_outcomes b JOIN outcomes o USING (candidate_id)"
+            " WHERE o.resolved_by = 'virtuale' ORDER BY b.candidate_id")]
 
     def record_outcome(self, candidate_id: int, outcome: Outcome) -> bool:
         if self.conn.execute("SELECT 1 FROM outcomes WHERE candidate_id = ?", (candidate_id,)).fetchone():

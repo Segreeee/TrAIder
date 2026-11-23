@@ -7,9 +7,11 @@ from ports import AccountState, Fill, OrderRequest, Position
 
 
 class SimBroker:
-    def __init__(self, quote: Callable[[str], tuple[float, float]], equity: float = 10_000.0):
+    def __init__(self, quote: Callable[[str], tuple[float, float]], equity: float = 10_000.0,
+                 commission_eur_per_lot: float = 0.0):
         self._quote = quote  # simbolo -> (bid, ask)
         self._equity = equity
+        self._commission = commission_eur_per_lot  # andata e ritorno: metà all'ingresso, come i deal MT5
         self._positions: list[Position] = []
         self._next_ticket = 1
 
@@ -22,7 +24,10 @@ class SimBroker:
             return Fill("sim", False, 0.0, ask - bid, None, "TP/SL dal lato sbagliato del prezzo")
         ticket, self._next_ticket = self._next_ticket, self._next_ticket + 1
         self._positions.append(Position(order.symbol, order.direction, order.lots, price, order.sl, order.tp, ticket))
-        return Fill("sim", True, price, ask - bid, ticket)
+        return Fill("sim", True, price, ask - bid, ticket, commission=-self._commission / 2 * order.lots)
+
+    def closed_trade(self, ticket: int) -> None:
+        return None  # il broker simulato non segue i prezzi: l'esito è solo quello virtuale
 
     def positions(self) -> list[Position]:
         return list(self._positions)

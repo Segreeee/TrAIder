@@ -111,6 +111,16 @@ class Fill:
     spread: float          # in prezzo (ask − bid) al momento del submit
     ticket: Optional[int]
     reason: str = ""
+    commission: Optional[float] = None   # EUR all'ingresso, segno MT5 (negativo = pagata); None = non nota
+
+
+@dataclass(frozen=True)
+class ClosedTrade:
+    """Posizione chiusa presso il broker, dai suoi deal. Importi in EUR con il segno MT5 (negativo = pagato)."""
+    exit_price: float
+    profit_eur: float
+    commission_eur: float   # ingresso + uscita
+    swap_eur: float
 
 
 @dataclass(frozen=True)
@@ -136,6 +146,10 @@ class Broker(Protocol):
     def submit(self, order: OrderRequest) -> Fill: ...
     def positions(self) -> list[Position]: ...
     def account(self) -> AccountState: ...
+
+    def closed_trade(self, ticket: int) -> Optional[ClosedTrade]:
+        """Esito presso il broker di una posizione chiusa; None se ancora aperta, sconosciuta o non tracciata."""
+        ...
 
 
 def build_broker(
@@ -196,7 +210,22 @@ class SignalStore(Protocol):
         """Id del candidato; ValueError se la variante è già registrata per il ciclo."""
         ...
 
-    def record_execution(self, candidate_id: int, fill: Fill, lots: float) -> None: ...
+    def record_execution(self, candidate_id: int, fill: Fill, lots: float,
+                         slippage_pips: Optional[float] = None) -> None:
+        """slippage_pips: fill contro il prezzo del candidato, positivo = sfavorevole."""
+        ...
+
+    def open_broker_trades(self) -> list[tuple[int, CandidateRecord, int, float, float]]:
+        """(candidate_id, record, ticket, lotti, prezzo di fill) degli ordini MT5 accettati senza esito del broker."""
+        ...
+
+    def record_broker_outcome(self, candidate_id: int, closed: ClosedTrade, r_gross: float, r_net: float) -> bool:
+        """Esito del broker accanto a quello virtuale; False se già registrato."""
+        ...
+
+    def reconciliations(self) -> list[tuple[int, float, float]]:
+        """(candidate_id, R netto virtuale, R netto del broker) per i candidati che hanno entrambi gli esiti."""
+        ...
 
     def record_outcome(self, candidate_id: int, outcome: Outcome) -> bool:
         """True se scritto, False se il candidato aveva già un esito."""
