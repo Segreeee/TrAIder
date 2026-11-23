@@ -94,3 +94,8 @@ def test_generated_geometry_valid(seed, drift):
         cand, _ = out
         assert cand.d_tp / cand.d_sl == pytest.approx(1.5)
         assert all(-3 <= v <= 3 for v in out[1].values())
+
+
+def test_stop_below_a_tenth_of_pip_gives_no_candidate():
+    # R10: volatilità quasi nulla -> nessun candidato, non un ciclo in errore
+    assert generate("EURUSD", M15_UP, H1_UP, _close_of(M15_UP), sl_atr=1e-6) is None

@@ -44,3 +44,11 @@ def test_valid_candidate_has_positive_distances(direction, entry, d_sl, d_tp):
     c = Candidate("EURUSD", direction, entry=entry, sl=entry - sign * d_sl, tp=entry + sign * d_tp,
                   candle_close_utc=CLOSE)
     assert c.d_sl > 0 and c.d_tp > 0
+
+
+def test_candidate_rejects_stop_or_target_below_a_tenth_of_pip():
+    # review di fine Fase 3 (R10): uno stop arrotondato a 0 pip faceva dividere per zero in decide e in p0
+    with pytest.raises(ValueError, match="0.1 pip"):
+        Candidate("EURUSD", Direction.BUY, entry=1.10000, sl=1.099999, tp=1.10010, candle_close_utc=CLOSE)
+    with pytest.raises(ValueError, match="0.1 pip"):
+        Candidate("EURUSD", Direction.SELL, entry=1.10000, sl=1.10010, tp=1.099999, candle_close_utc=CLOSE)
