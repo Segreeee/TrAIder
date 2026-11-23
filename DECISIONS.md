@@ -86,6 +86,18 @@ Le analisi complete con le matrici stanno in `docs/ALTERNATIVE.md`.
 - **Conseguenze:** `outcomes.resolved_by = 'broker'` resta ammesso dallo schema ma non usato. L'ora di chiusura è quella di rilevazione; il cambio EUR è quello della riconciliazione.
 - **Cosa farebbe cambiare idea:** scarti sistematici vicini alla soglia di 0.1 R dovuti a questi due limiti → ora del deal convertita con l'offset del server e cambio salvato all'ingresso.
 
+### D-015 — Notizie live da una cache del ciclo precedente  ·  Stato: Accettata  ·  2026-11-23
+- **Contesto:** review di fine Fase 3: il ciclo scarica le notizie dopo la chiusura, quindi fetched_at > chiusura e il filtro anti-futuro le scarta tutte; il macro non è mai partito.
+- **Alternative:** **cache: ogni ciclo salva ciò che scarica, il successivo usa solo notizie già in cache prima della chiusura** / tolleranza di pochi secondi su fetched_at.
+- **Decisione e motivo:** cache (scelta dell'utente). La regola anti-futuro resta rigorosa; costo: le notizie arrivano con una candela (15 min) di ritardo.
+- **Cosa farebbe cambiare idea:** il ritardo rende il macro inutile nei dati (varianti 4/5 senza segnale) → ADR sulla tolleranza.
+
+### D-016 — Posizioni del broker simulato ricavate dall'archivio  ·  Stato: Accettata  ·  2026-11-23
+- **Contesto:** le posizioni simulate non si chiudevano mai: dopo 3 trade ogni candidato andava in HOLD MAX_POSITIONS.
+- **Alternative:** **dall'archivio: eseguiti e non ancora risolti** / chiusura in memoria quando arriva l'esito.
+- **Decisione e motivo:** dall'archivio (scelta dell'utente): sopravvivono ai riavvii e si chiudono con l'esito virtuale.
+- **Nota:** proposto e rifiutato dall'utente un controllo "solo conto demo" nel broker MT5: restano doppio consenso e conferma nella conversazione.
+
 ## Domande aperte
 - Q-001 — Fornitore del giudice remoto (campione 20%, D-012): lo sceglie l'utente. Fino ad allora solo giudice locale. Non blocca la Fase 2: la porta LLM è indipendente dal fornitore.
 - Q-005 — Soglia di attivazione del modello logistico (2026-11-22, P3.26). La regola della specifica "Brier skill score > 0 fuori campione" si attiva **per caso**: con caratteristiche senza informazione (600 esiti, split 70/30) il BSS esce positivo in 4 semi su 10 (0.0002, 0.0015, 0.0044, 0.0096). Il gate su EV_5 resta una seconda protezione (il p5 da bootstrap è prudente), ma la regola da sola non distingue segnale da rumore. Proposte: (a) estremo inferiore di un intervallo bootstrap al 90% del BSS > 0; (b) soglia fissa, es. BSS ≥ 0.01; (c) test di rapporto di verosimiglianza contro β = 0 con p < 0.05. Raccomandazione: (a), coerente con l'uso di p5 nel gate. Il test `test_uninformative_features_keep_beta` è segnato xfail strict finché non si decide. **Chiusa il 2026-11-22: l'utente sceglie (a).**

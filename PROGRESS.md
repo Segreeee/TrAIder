@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** fine della Fase 3: review di fase (`/code-review`, `/ecc:python-review`, `ecc:verification-loop`), poi P5.01 [UTENTE] preregistrazione.
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** correzioni della review di Fase 3 (R1–R11), poi P5.01 [UTENTE] preregistrazione.
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -611,6 +611,26 @@ Il planner aveva dedotto le formule da ALTERNATIVE.md; qui sono riscritte sulla 
 - **Dipendenze:** P3.33, P3.16.
 
 Passo opzionale, non incluso nel conteggio: importare in sola lettura i 21 trade di `logs/signals_history.json` come variante `legacy_llm`, senza toccare il file. Da fare solo se vuoi la continuità storica.
+
+---
+
+## Correzioni dalla review di fine Fase 3 (2026-11-23)
+Ognuna in TDD (RED, poi GREEN), un commit per correzione. Rilievi letti nel codice; ciascuno si conferma con il test RED.
+
+*Prima del test in avanti (P5.10):*
+- [ ] R1 — `HORIZON_BARS` ignorato: make_cycle non lo passa a resolve_pending.
+- [ ] R2 — logistica che non converge fa fallire il ciclo: ripiego sulla Beta con log.
+- [ ] R3 — notizie: cache del ciclo precedente (D-015).
+- [ ] R4 — posizioni simulate dall'archivio (D-016).
+- [ ] R5 — risoluzione: nessun esito se le barre non coprono la chiusura del candidato (tetto MAX_BARS, cambio dell'ora legale).
+- [ ] R6 — candela vecchia: l'ultima barra deve chiudere a candle_close, altrimenti ciclo in errore.
+- [ ] R7 — Ctrl+C/SystemExit: il ciclo si chiude come errore prima di propagare.
+- [ ] R8 — riconciliazione: errore isolato per trade.
+- [ ] R9 — avvio: errori di composizione nel log, codice di uscita 1, archivio chiuso.
+- [ ] R10 — stop a 0 pip: HOLD invece di divisione per zero.
+- [ ] R11 — ruff + mypy in requirements-dev.txt (scelta dell'utente).
+
+*Prima degli ordini su demo (P5.11):* R:R minimo uguale a quello di progetto; SL/TP arrotondati alle cifre del simbolo; deal del giorno in ora del server; ordine aperto ma non archiviato se qualcosa fallisce dopo l'invio; DONE_PARTIAL e modalità di riempimento; limiti di volume del simbolo e rischio al prezzo reale; candela in ritardo al riavvio (recover).
 
 ---
 
