@@ -214,3 +214,39 @@ def test_cost_excludes_spread():
     run_once("EURUSD", CLOSE, ports, Settings(_env_file=None, commission_eur_per_lot=7.0, slippage_pips=0.2))
     rec = next(r for _, r in ports.store.candidates.values())
     assert rec.cost_pips == pytest.approx(7.0 / (0.0001 * 100_000 / 1.10) + 0.2)
+
+
+# --- log per simbolo (dopo il primo avvio reale: cicli lunghi e salti silenziosi) --- #
+
+
+def _messages(caplog):
+    return [r.getMessage() for r in caplog.records if r.name == "app.run_once"]
+
+
+def test_logs_one_summary_line_per_symbol(caplog):
+    caplog.set_level("INFO")
+    run_once("EURUSD", CLOSE, _ports(), _cfg())
+    summary = [m for m in _messages(caplog) if m.startswith("EURUSD")]
+    assert len(summary) == 1
+    assert "BUY" in summary[0] and "HOLD" in summary[0] and "GATE_EV" in summary[0]
+
+
+def test_logs_no_candidate(caplog):
+    caplog.set_level("INFO")
+    run_once("EURUSD", CLOSE, _ports(market=TableMarket(h1_step=-0.0004)), _cfg())
+    assert any(m.startswith("EURUSD") and "nessun candidato" in m for m in _messages(caplog))
+
+
+def test_logs_already_processed_candle(caplog):
+    caplog.set_level("INFO")
+    ports = _ports()
+    run_once("EURUSD", CLOSE, ports, _cfg())
+    caplog.clear()
+    run_once("EURUSD", CLOSE, ports, _cfg())
+    assert any(m.startswith("EURUSD") and "già elaborata" in m for m in _messages(caplog))
+
+
+def test_logs_llm_start_before_waiting(caplog):
+    caplog.set_level("INFO")
+    run_once("EURUSD", CLOSE, _ports(), _cfg())
+    assert any("tecnico" in m and "fake-llm" in m for m in _messages(caplog))
