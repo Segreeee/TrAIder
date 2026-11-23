@@ -171,7 +171,7 @@ Non devi fare nulla ora. Quando arriviamo al passo, ti scrivo la domanda precisa
 | P5.08 | Codice pronto (D-018: giudice su API esterna). Quando scegli il fornitore (B1) si lancia a mano: `.venv\Scripts\python -m evaluation.judge_batch`. Ogni lancio costa: 5 chiamate per ciclo giudicato, sul 20% dei cicli | 🖥️ |
 | P5.10 | Pronto: istruzioni nella sezione E qui sotto | 🖥️ |
 | P5.11 | **Ordini sul conto demo:** solo se e quando lo decidi tu. Imposti tu nel `.env` i due flag del doppio consenso e me lo confermi in chat. Io non li tocco mai | 🖥️ + 💬 |
-| P6.03 | Confermare la rimozione della vecchia dashboard Streamlit e scegliere come vedere la nuova dal telefono (Tailscale o cartella sincronizzata) | 💬 |
+| P6.03 | ✅ Codice fatto il 2026-11-23. Tocca a te: nel `.env` la riga `DASHBOARD_PATH=<cartella sincronizzata>\dashboard.html`, poi riavvia il demone (Utilità di pianificazione: TrAIder → Termina, poi Esegui) | 🖥️ |
 
 ---
 
