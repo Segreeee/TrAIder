@@ -20,3 +20,7 @@ def check_broker(broker, symbol: str, bid: float, ask: float):
 
     held = broker.positions()
     assert [(p.symbol, p.direction, p.lots) for p in held] == [(symbol, Direction.BUY, 0.01)]
+
+    # P3.34: una posizione ancora aperta (o un ticket sconosciuto) non ha un esito del broker
+    assert broker.closed_trade(fill.ticket) is None
+    assert broker.closed_trade(987654) is None

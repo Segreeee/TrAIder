@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from domain.types import Candidate, Direction
-from ports import CandidateRecord, Fill, LlmResult, Outcome
+from ports import CandidateRecord, ClosedTrade, Fill, LlmResult, Outcome
 
 CLOSE = datetime(2026, 3, 2, 12, 0, tzinfo=timezone.utc)
 
@@ -92,6 +92,26 @@ def check_resolved_history_per_variant(make_store):
     assert store.resolved("v2") == []
 
 
+def check_broker_outcome_beside_virtual(make_store):
+    # P3.34: l'esito del broker non sostituisce quello virtuale, gli sta accanto
+    store = make_store()
+    cycle = store.begin_cycle("EURUSD", CLOSE)
+    sim, real = store.record_candidate(cycle, _record("v1")), store.record_candidate(cycle, _record("v2"))
+    store.record_execution(sim, Fill("sim", True, 1.10008, 0.00008, 1, commission=-0.35), lots=0.1, slippage_pips=0.0)
+    store.record_execution(real, Fill("mt5", True, 1.10010, 0.00008, 7, commission=-0.35), lots=0.1, slippage_pips=0.2)
+    assert [(cid, ticket, lots, price) for cid, _, ticket, lots, price in store.open_broker_trades()] == [
+        (real, 7, 0.1, 1.10010)]
+
+    closed = ClosedTrade(exit_price=1.0980, profit_eur=-19.1, commission_eur=-0.70, swap_eur=-0.20)
+    assert store.record_broker_outcome(real, closed, r_gross=-1.0, r_net=-1.05) is True
+    assert store.record_broker_outcome(real, closed, r_gross=-1.0, r_net=-1.05) is False
+    assert store.open_broker_trades() == []
+    assert store.reconciliations() == []  # manca ancora l'esito virtuale
+    store.record_outcome(real, _outcome())
+    assert store.reconciliations() == [(real, _outcome().r_net, -1.05)]
+
+
 ALL = [check_finish_cycle_once, check_resolved_history_per_variant, check_begin_cycle_idempotent,
        check_candidate_unique_per_variant, check_outcome_recorded_once, check_pending_excludes_resolved,
-       check_llm_call_and_execution_are_kept, check_pending_roundtrip_keeps_the_record]
+       check_llm_call_and_execution_are_kept, check_pending_roundtrip_keeps_the_record,
+       check_broker_outcome_beside_virtual]
