@@ -60,6 +60,7 @@ class CycleReport:
 
 def _ask(llm: Llm, role: str, prompt: tuple[str, str], version: str, cycle: int, cand: Candidate,
          ports: Ports, cfg: Settings, report: CycleReport) -> None:
+    log.info("analista %s (%s) in corso su %s", role, llm.model, cand.symbol)
     result = call_validated(llm, *prompt, AnalystView, prompt_version=version, max_retries=cfg.llm_max_retries)
     ports.store.record_llm_call(cycle, role, result)
     report.features[role], invalid = feature_from_result(result, cand.direction)
@@ -108,6 +109,7 @@ def run_once(symbol: str, candle_close: datetime, ports: Ports, cfg: Settings, c
         raise ValueError("candle_close deve avere il fuso orario")
     cycle = ports.store.begin_cycle(symbol, candle_close)
     if cycle is None:
+        log.info("%s: candela %s già elaborata, salto", symbol, candle_close)
         return CycleReport("skipped")
     report, snapshot = CycleReport("done"), None
     try:
@@ -138,4 +140,15 @@ def run_once(symbol: str, candle_close: datetime, ports: Ports, cfg: Settings, c
         log.exception("ciclo %s %s fallito", symbol, candle_close)
         report.status, report.error = "error", f"{type(exc).__name__}: {exc}"
     ports.store.finish_cycle(cycle, report.status, report.error, snapshot, code_version, cfg.config_hash())
+    _log_summary(symbol, report)
     return report
+
+
+def _log_summary(symbol: str, r: CycleReport) -> None:
+    if r.status == "error":
+        log.info("%s: ciclo in errore (%s)", symbol, r.error)
+    elif r.candidate is None:
+        log.info("%s: nessun candidato", symbol)
+    else:
+        log.info("%s: candidato %s -> %s%s", symbol, r.candidate.direction.value, r.decision,
+                 f" ({r.hold_reason})" if r.hold_reason else "")
