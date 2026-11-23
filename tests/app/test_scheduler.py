@@ -8,6 +8,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from adapters.finnhub_news import FinnhubNews
+from adapters.news_cache import CachedNews
 from adapters.mt5_broker import Mt5Broker
 from adapters.null_news import NullNews
 from adapters.sim_broker import SimBroker
@@ -113,7 +114,8 @@ def test_double_consent_composes_mt5_broker(tmp_path):
 
 
 def test_finnhub_provider_composes_finnhub(tmp_path):
-    assert isinstance(_build(tmp_path, news_provider="finnhub", finnhub_api_key="k").news, FinnhubNews)
+    news = _build(tmp_path, news_provider="finnhub", finnhub_api_key="k").news
+    assert isinstance(news, CachedNews) and isinstance(news.inner, FinnhubNews)  # D-015: Finnhub dietro la cache
 
 
 def test_mt5_init_kwargs_from_settings():

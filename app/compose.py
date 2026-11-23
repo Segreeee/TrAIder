@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from adapters.finnhub_news import FinnhubNews
+from adapters.news_cache import CachedNews
 from adapters.llm_openai import OpenAiLlm, build_client
 from adapters.mt5_broker import Mt5Broker
 from adapters.mt5_data import Mt5Data
@@ -49,10 +50,12 @@ def ollama_digest(base_url: str, model: str, opener: Callable = urllib.request.u
 
 
 def _news(cfg: Settings):
+    # D-015: le fonti live passano dalla cache, altrimenti la regola anti-futuro scarta ogni notizia
+    cache = Path(cfg.db_path).parent / "news_cache.json"
     if cfg.news_provider == "finnhub":
-        return FinnhubNews(cfg.finnhub_api_key)
+        return CachedNews(FinnhubNews(cfg.finnhub_api_key), cache)
     if cfg.news_provider == "mock":
-        return StaticNews()
+        return CachedNews(StaticNews(), cache)
     return NullNews()
 
 
