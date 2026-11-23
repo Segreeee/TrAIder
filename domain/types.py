@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 
+from domain.pip import pip_size
+
 
 class Direction(str, Enum):
     BUY = "BUY"
@@ -44,6 +46,9 @@ class Candidate:
             raise ValueError("candle_close_utc deve avere un fuso orario")
         if not levels_consistent(self.direction.value, self.entry, self.tp, self.sl):
             raise ValueError(f"geometria invertita per {self.direction.value}: entry={self.entry} sl={self.sl} tp={self.tp}")
+        pip = pip_size(self.symbol)
+        if round(self.d_sl / pip, 1) == 0 or round(self.d_tp / pip, 1) == 0:  # come domain.costs.distance_pips
+            raise ValueError(f"stop o target a meno di 0.1 pip dall'ingresso: entry={self.entry} sl={self.sl} tp={self.tp}")
 
     @property
     def d_sl(self) -> float:

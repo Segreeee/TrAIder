@@ -51,6 +51,8 @@ def generate(
 
     point = pip_size(symbol) / 10  # prezzi a 5/3 cifre: lo spread MT5 è in punti
     atr = float(last["atr"])
+    if round(min(sl_atr, tp_atr) * atr / pip_size(symbol), 1) == 0:
+        return None  # volatilità quasi nulla: stop o target a meno di 0.1 pip, nessun candidato (R10)
     if up:
         entry = float(last["close"]) + float(last["spread"]) * point
         cand = Candidate(symbol, Direction.BUY, entry, entry - sl_atr * atr, entry + tp_atr * atr, candle_close)
