@@ -77,3 +77,17 @@ def test_dashboard_has_no_llm_or_broker_imports():
     forbidden = {"core.qwen_brain", "core.ensemble", "core.executor", "core.prompt_builder", "core.data_feed",
                  "core.news_feed", "adapters.llm_openai", "adapters.mt5_broker", "adapters.mt5_data", "MetaTrader5"}
     assert _imports(ROOT / "dashboard.py") & forbidden == set()
+
+
+# --- P3.31: moduli legacy rimossi --- #
+
+REMOVED = ["core.ensemble", "core.qwen_brain", "core.executor", "core.risk_manager", "core.exposure",
+           "core.data_feed", "core.prompt_builder", "core.account", "core.backtester", "config.settings"]
+
+
+def test_no_imports_from_removed_modules():
+    offenders = {str(p.relative_to(ROOT)): sorted(_imports(p) & set(REMOVED)) for p in ROOT.rglob("*.py")
+                 if ".venv" not in p.parts}
+    assert {k: v for k, v in offenders.items() if v} == {}
+    assert [m for m in REMOVED if (ROOT / (m.replace(".", "/") + ".py")).exists()] == []
+    assert not (ROOT / "backtest.py").exists()

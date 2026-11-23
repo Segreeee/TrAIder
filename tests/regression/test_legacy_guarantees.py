@@ -50,6 +50,13 @@ LEGACY = [
     ("Ensemble.failed_analyst_is_skipped (c)", "app/test_run_once.py", "test_llm_down_records_cycle_with_missing_features"),
     ("Ensemble.all_down_returns_empty (c)", "regression/test_legacy_guarantees.py", "test_all_analysts_down_cycle_still_done"),
     ("Ensemble.think_block_stripped", "adapters/test_llm_openai.py", "test_think_block_stripped"),
+    # test aggiunti in P3.01-P3.03 sull'executor legacy, rimossi in P3.31
+    ("LiveConsent.order_send_called_iff_double_consent", "test_broker_port.py", "test_mt5_factory_called_iff_double_consent"),
+    ("LiveConsent.broker_refuses_without_consent", "adapters/test_mt5_broker.py", "test_constructor_refuses_without_live_allowed"),
+    ("LiveConsent.allow_live_defaults_to_false", "app/test_config.py", "test_defaults_are_safe"),
+    ("LiveConsent.dry_run_false_alone_is_not_live", "app/test_config.py", "test_live_without_second_flag_fails"),
+    ("TpSlDirection.inverted_levels_rejected", "domain/test_types.py", "test_candidate_rejects_inverted_geometry"),
+    ("TpSlDirection.executor_never_sends_inverted", "adapters/test_mt5_broker.py", "test_inverted_levels_never_sent"),
 ]
 
 
