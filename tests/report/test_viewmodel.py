@@ -83,3 +83,9 @@ def test_viewmodel_of_empty_archive(tmp_path):
     SqliteStore(str(path)).close()
     vm = viewmodel(load_archive(path), production_variant="v7-completo")
     assert vm["signals"] == [] and vm["curve"] == [] and vm["positions"] == [] and vm["exposure"] == {}
+
+
+def test_viewmodel_progress_toward_preregistered_thresholds(db):
+    vm = viewmodel(load_archive(db), production_variant="v7-completo")
+    assert vm["progress"] == {"n": 2, "n_target": 300, "days": 1, "days_target": 30}
+    assert vm["last_cycle"] == "2026-12-01T12:00:00+00:00"
