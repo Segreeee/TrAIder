@@ -98,3 +98,13 @@ def test_trade_levels_rendered_with_symbol_precision(db):  # noqa: F811
     assert "ingresso 1.10000" in html and "stop 1.09800" in html and "target 1.10300" in html
     assert "0.10 lotti" in html
     assert "capitale simulato" in html  # il lotto non è calcolato sul saldo del conto demo
+
+
+def test_labels_follow_what_is_measured(db):  # noqa: F811
+    # review P7.01: l'esito e l'avanzamento riguardano sempre v7 contro v2, la calibrazione la variante di produzione
+    html = render(viewmodel(load_archive(db), production_variant="v2-tecnica"), generated_at=NOW)
+    assert "(v7-completo)" in html and "di v2-tecnica" in html
+
+
+def test_positions_use_symbol_decimals(db):  # noqa: F811
+    assert '<td class="num">1.10000</td>' in _html(db)  # come nei segnali: 5 decimali, 3 per le coppie JPY

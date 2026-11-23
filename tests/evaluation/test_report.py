@@ -135,3 +135,20 @@ def test_report_from_date_excludes_earlier_cycles(tmp_path):
     assert r["variants"]["v7-completo"]["n"] == 6 * 5
     assert r["coverage"]["cycles_error"] == 0  # il ciclo in errore è precedente
     assert main(["--db", str(db), "--dal", "2026-12-05T00:00:00+00:00"]) == 0
+
+
+def test_running_cycle_does_not_empty_the_report(tmp_path):
+    # review P7.01: il ciclo in corso non ha ancora config_hash e diventava la "serie più recente"
+    db = tmp_path / "a.db"
+    _archive(db, days=3)
+    store = SqliteStore(str(db))
+    store.begin_cycle("EURUSD", T0 + timedelta(days=30))  # demone a metà ciclo
+    store.close()
+    r = analyze(*load(db))
+    assert r["series"] == "h1" and r["variants"]["v7-completo"]["n"] == 15
+
+
+def test_since_without_time_zone_is_utc(tmp_path):
+    db = tmp_path / "a.db"
+    _archive(db, days=6)
+    assert main(["--db", str(db), "--dal", "2026-12-04"]) == 0

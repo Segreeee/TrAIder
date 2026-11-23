@@ -97,3 +97,16 @@ def test_trade_signals_carry_levels_and_lot(db):
     trade = vm["signals"][0]
     assert (trade["decision"], trade["entry"], trade["sl"], trade["tp"], trade["lot"]) == (
         "TRADE", pytest.approx(1.1), pytest.approx(1.098), pytest.approx(1.103), pytest.approx(0.1))
+
+
+def test_dashboard_counts_only_cycles_after_preregistration(tmp_path):
+    # review P7.01: i cicli di prova prima dell'approvazione (stessa config_hash) non entrano nell'esito né nelle soglie
+    from evaluation.report import PREREG_START
+    path = tmp_path / "a.db"
+    store = SqliteStore(str(path))
+    _cycle(store, "EURUSD", PREREG_START - timedelta(hours=1), "TRADE", "TP", execute=True)
+    _cycle(store, "GBPUSD", PREREG_START + timedelta(hours=1), "TRADE", "SL", execute=True)
+    store.close()
+    vm = viewmodel(load_archive(path), production_variant="v7-completo")
+    assert vm["coverage"]["cycles_done"] == 1 and [s["symbol"] for s in vm["signals"]] == ["GBPUSD"]
+    assert PREREG_START.isoformat() == "2026-11-23T16:45:00+00:00"  # primo ciclo dopo il commit 8d8b8c2
