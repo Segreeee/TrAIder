@@ -63,6 +63,7 @@ def main(argv: list[str] | None = None) -> int:
     if not mt5.initialize(**mt5_init_kwargs(cfg)):
         log.error("MetaTrader5 non inizializzato: %s", mt5.last_error())
         return 1
+    ports = None
     try:
         ports = build_ports(cfg, mt5)
         version = code_version()
@@ -77,7 +78,12 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         log.info("interruzione manuale (Ctrl+C)")
         return 0
+    except Exception:  # Ollama giù, modello mancante, archivio illeggibile: nel log, non solo su stderr
+        log.exception("TrAIder fermato da un errore")
+        return 1
     finally:
+        if ports is not None:
+            ports.store.close()
         mt5.shutdown()
         log.info("TrAIder arrestato")
 

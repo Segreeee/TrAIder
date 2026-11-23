@@ -31,6 +31,9 @@ class SqliteStore:
         self.conn.executescript(SCHEMA.read_text(encoding="utf-8"))
         self._clock = clock
 
+    def close(self) -> None:
+        self.conn.close()
+
     def _insert(self, sql: str, params: tuple) -> sqlite3.Cursor:
         """Una transazione per scrittura; i vincoli violati diventano ValueError come nella porta."""
         try:

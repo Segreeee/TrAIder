@@ -181,6 +181,9 @@ class FakeStore:
     def record_execution(self, candidate_id: int, fill, lots: float, slippage_pips=None) -> None:
         self.executions.append((candidate_id, fill, lots, slippage_pips))
 
+    def close(self) -> None:
+        pass
+
     def open_sim_positions(self):
         out = []
         for cid, fill, lots, _ in self.executions:
