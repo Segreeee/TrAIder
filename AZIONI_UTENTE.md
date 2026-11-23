@@ -165,8 +165,8 @@ Non devi fare nulla ora. Quando arriviamo al passo, ti scrivo la domanda precisa
 
 | Passo | Cosa ti chiederò | Tipo |
 |---|---|---|
-| P3.29 | Confermare che un vecchio test cambia valore atteso (0.50 → 0.55 lotti, correzione del pip fisso) e che due test del vecchio "giudice decisore" vengono ritirati | 💬 |
-| P3.31 | Confermare la cancellazione del codice vecchio (`core/`, `config/settings.py`, `backtest.py`). Resta recuperabile da git | 💬 |
+| P3.29 | ✅ Fatto (conferme date all'approvazione del piano) | — |
+| P3.31 | ✅ Fatto il 2026-11-23: codice vecchio cancellato su tua conferma (recuperabile da git) | — |
 | P5.01 | Leggere e approvare la "preregistrazione": quali metriche e soglie useremo, scritte **prima** di raccogliere dati | 💬 |
 | P5.08 | Scegliere il modello del giudice locale e scaricarlo: nel terminale `ollama pull <nome-modello>` | 🖥️ |
 | P5.10 | Avviare il programma in simulazione e programmarlo nell'**Utilità di pianificazione** di Windows. Ti darò le istruzioni passo passo | 🖥️ |
