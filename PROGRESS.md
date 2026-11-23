@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** P3.29 (migrazione dei test legacy; conferme (a) e (b) già date all'approvazione del piano). In attesa [UTENTE]: secondo avvio `python main.py --once` dopo la correzione del Market Watch.
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** P3.30 (rimozione di core/confidence.py e della pipeline della dashboard). In attesa [UTENTE]: secondo avvio `python main.py --once` dopo la correzione del Market Watch.
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -636,7 +636,8 @@ Passo opzionale, non incluso nel conteggio: importare in sola lettura i 21 trade
   - valori noti per ciascuna metrica;
   - hypothesis `brier ∈ [0, 1]`;
   - `test_bss_of_reference_is_zero`;
-  - `test_drawdown_monotone_series_zero`.
+  - `test_drawdown_monotone_series_zero`;
+  - `test_summary_reports_gross_and_net` (porting dal legacy CostsTest, rimandato qui da P3.29: R totale lordo e netto).
 - **File:** creati `evaluation/__init__.py`, `evaluation/metrics.py`, `tests/evaluation/test_metrics.py`.
 - **Accettazione:** `.venv\Scripts\python -m pytest tests/evaluation/test_metrics.py -q`
 - **Rischio:** basso.
@@ -932,3 +933,4 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-22: T-007 chiuso su decisione dell'utente. P3.18 fatto (adapters/finnhub_news.py, chiave nell'header, errori → lista vuota): 359 passed.
 - 2026-11-22: P3.28 fatto: app/scheduler.py, app/compose.py, main.py riscritto (--once). Il flusso legacy non è più raggiungibile da main.py. Con il .env dell'utente il broker composto è quello simulato (verificato leggendo solo i flag). 373 passed.
 - 2026-11-23: primo avvio reale (`python main.py --once`, gemma3:12b su RTX 3050 da 4 GB): 4 simboli su 6 chiusi bene (EURUSD con candidato e 4 varianti archiviate; prima chiamata LLM 302 s in 3 tentativi per il caricamento del modello, poi ~25 s). USDCAD e USDCHF falliti: EURCAD/EURCHF fuori dal Market Watch, tick letto senza symbol_select. Corretto (e083df2 RED, poi GREEN). Aggiunti log per simbolo e per chiamata LLM (ebab8e2 RED, a132874 GREEN): un avvio sulla stessa candela ora dice "già elaborata". 379 passed.
+- 2026-11-23: P3.29 fatto: tests/regression/test_legacy_guarantees.py. 24 delle 30 garanzie legacy erano già coperte nei moduli nuovi; il file verifica che quei test esistano (protezione per P3.31) e aggiunge le 2 mancanti (lotto mai dall'LLM, tutti gli analisti giù). Ritirati i 2 test del giudice decisore (b); Yahoo (3) resta per T-002; il riepilogo R lordo/netto passa a P5.02. 405 passed.
