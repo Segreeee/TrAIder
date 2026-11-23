@@ -122,7 +122,7 @@ Le analisi complete con le matrici stanno in `docs/ALTERNATIVE.md`.
 ## TODO
 | ID | Voce | Responsabile | Collegato a | Stato |
 |----|------|--------------|-------------|-------|
-| T-001 | `git rm --cached` di `logs/signals_history.json` e `logs/backtest_*.csv` (restano su disco) | claude, su conferma | Fase 7 | da fare |
+| T-001 | `git rm --cached` di `logs/signals_history.json` e `logs/backtest_*.csv` (restano su disco) | claude, su conferma | Fase 7 | fatto il 2026-11-23 su conferma dell'utente: tolti dall'indice con git rm --cached, i file restano su disco e sono già in .gitignore |
 | T-002 | `YahooNewsFeed` non usata: rimuoverla o tenerla come adattatore di prova | utente | D-005 | da fare |
 | T-003 | Ricordare all'utente di configurare l'email "noreply" di GitHub per i commit | claude | Fase 7 | da fare |
 | T-004 | Controllo della direzione di TP/SL mancante (`abs()` nel calcolo di R:R) | claude | Fase 3, primi passi | fatto (21f63eb) |
