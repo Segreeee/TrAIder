@@ -89,3 +89,11 @@ def test_viewmodel_progress_toward_preregistered_thresholds(db):
     vm = viewmodel(load_archive(db), production_variant="v7-completo")
     assert vm["progress"] == {"n": 2, "n_target": 300, "days": 1, "days_target": 30}
     assert vm["last_cycle"] == "2026-12-01T12:00:00+00:00"
+
+
+def test_trade_signals_carry_levels_and_lot(db):
+    # l'utente copia i TRADE a mano su MT5 dal telefono: servono ingresso, stop, target e lotto
+    vm = viewmodel(load_archive(db), production_variant="v7-completo")
+    trade = vm["signals"][0]
+    assert (trade["decision"], trade["entry"], trade["sl"], trade["tp"], trade["lot"]) == (
+        "TRADE", pytest.approx(1.1), pytest.approx(1.098), pytest.approx(1.103), pytest.approx(0.1))

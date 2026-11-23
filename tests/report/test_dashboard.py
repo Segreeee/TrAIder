@@ -91,3 +91,10 @@ def test_atomic_write_no_partial_file(db, tmp_path, monkeypatch):  # noqa: F811
         pass
     assert out.read_text(encoding="utf-8") == "pagina precedente"  # il telefono non vede mai una pagina a metà
     assert not [p.name for p in tmp_path.iterdir() if p.name.endswith(".tmp")]  # nessun file temporaneo lasciato
+
+
+def test_trade_levels_rendered_with_symbol_precision(db):  # noqa: F811
+    html = _html(db)
+    assert "ingresso 1.10000" in html and "stop 1.09800" in html and "target 1.10300" in html
+    assert "0.10 lotti" in html
+    assert "capitale simulato" in html  # il lotto non è calcolato sul saldo del conto demo
