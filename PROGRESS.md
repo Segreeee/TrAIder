@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** P5.09 (metriche del giudice su dati sintetici). In attesa [UTENTE]: approvazione di docs/PREREGISTRAZIONE.md (sblocca P5.10) e scelta del modello del giudice di un'altra famiglia (sblocca P5.08).
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** decisioni [UTENTE]: approvazione di docs/PREREGISTRAZIONE.md (sblocca P5.10), modello del giudice di un'altra famiglia (sblocca P5.08). Senza di esse si può procedere con la Fase 6 (dashboard).
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -969,3 +969,5 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-23: P5.04 (ridotto da D-017) e P5.05 fatti: evaluation/report.py (b9b2644 e f1c0753 RED, poi GREEN). Sull'archivio reale: 24 cicli completati, 6 in errore, 7 candidati risolti in un giorno, esito non concludente come atteso. 448 test verdi; copertura domain + evaluation 98%.
 - 2026-11-23: P5.06 fatto: refactor virtual_outcome (4f1dd74), evaluation/backtest.py (41aa6e9 RED, bdfce3b GREEN). Varianti LLM rifiutate, walk-forward verificato con una spia sullo stimatore, esiti identici a resolve_pending. 452 test verdi, copertura domain + evaluation 98%.
 - 2026-11-23: P5.07 fatto: evaluation/judge.py (d681880 RED, 6528344 GREEN): schema chiuso, prompt alla cieca con ordine a seme, controlli deterministici, veto che solo toglie.
+- 2026-11-23: P5.09 fatto: evaluation/judge_metrics.py (2f286d8 RED, a94aec9 GREEN). 458 test verdi.
+- 2026-11-23: primo backtest reale (EURUSD, 3000 barre M15, ~37 giorni di calendario, 2 minuti): 2055 candidati, 2052 risolti. v2-tecnica contro p0: BSS −0.015, IC 95% per giorno [−0.034, 0.006], AUC 0.476: le caratteristiche tecniche non mostrano valore predittivo su questo mese. Il gate ha lasciato passare 3 TRADE di v2, tutti in perdita (−3.22 R netti). Circa 55 candidati al giorno: conferma la scelta del bootstrap per giorno. Un mese solo: risultato descrittivo, non conclusivo. Nota: la sezione "metrica primaria" del report non ha senso sul backtest (v7 non esiste); il CLI del backtest non ha stampato il riepilogo finale (archivio scritto correttamente), da verificare.
