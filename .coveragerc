@@ -1,5 +1,5 @@
 [run]
-source = domain, evaluation
+source = domain, evaluation, report
 
 [report]
 fail_under = 85
