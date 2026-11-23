@@ -3,6 +3,7 @@ y = 1 se l'esito è TP, 0 se SL (i TIMEOUT si escludono prima di chiamarle); p =
 from collections.abc import Sequence
 
 import numpy as np
+from numpy.typing import ArrayLike
 from sklearn.metrics import roc_auc_score
 
 from ports import Outcome
@@ -10,30 +11,30 @@ from ports import Outcome
 EPS = 1e-15  # log-loss finita anche con p = 0 o 1
 
 
-def _arrays(y: Sequence[float], p: Sequence[float]) -> tuple[np.ndarray, np.ndarray]:
+def _arrays(y: ArrayLike, p: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
     y_arr, p_arr = np.asarray(y, dtype=float), np.asarray(p, dtype=float)
     if y_arr.shape != p_arr.shape or y_arr.size == 0:
         raise ValueError(f"y e p devono avere la stessa lunghezza, non nulla ({y_arr.size} contro {p_arr.size})")
     return y_arr, p_arr
 
 
-def brier(y: Sequence[float], p: Sequence[float]) -> float:
+def brier(y: ArrayLike, p: ArrayLike) -> float:
     y_arr, p_arr = _arrays(y, p)
     return float(np.mean((p_arr - y_arr) ** 2))
 
 
-def brier_skill(y: Sequence[float], p: Sequence[float], p_ref: Sequence[float]) -> float:
+def brier_skill(y: ArrayLike, p: ArrayLike, p_ref: ArrayLike) -> float:
     """1 − Brier(p) / Brier(p_ref): > 0 se p batte il riferimento (p0 nella preregistrazione)."""
     return 1.0 - brier(y, p) / brier(y, p_ref)
 
 
-def log_loss(y: Sequence[float], p: Sequence[float]) -> float:
+def log_loss(y: ArrayLike, p: ArrayLike) -> float:
     y_arr, p_arr = _arrays(y, p)
     p_arr = np.clip(p_arr, EPS, 1 - EPS)
     return float(-np.mean(y_arr * np.log(p_arr) + (1 - y_arr) * np.log(1 - p_arr)))
 
 
-def auc(y: Sequence[float], p: Sequence[float]) -> float | None:
+def auc(y: ArrayLike, p: ArrayLike) -> float | None:
     """Area sotto la curva ROC; None se c'è una sola classe (non definita)."""
     y_arr, p_arr = _arrays(y, p)
     if len(set(y_arr)) < 2:
@@ -41,7 +42,7 @@ def auc(y: Sequence[float], p: Sequence[float]) -> float | None:
     return float(roc_auc_score(y_arr, p_arr))
 
 
-def calibration_deciles(y: Sequence[float], p: Sequence[float], bins: int = 10) -> list[dict]:
+def calibration_deciles(y: ArrayLike, p: ArrayLike, bins: int = 10) -> list[dict]:
     """Affidabilità: candidati ordinati per p e divisi in `bins` gruppi di pari numerosità;
     per gruppo p media, frequenza osservata di TP e numerosità."""
     y_arr, p_arr = _arrays(y, p)
@@ -72,7 +73,7 @@ def summarize_r(outcomes: Sequence[Outcome]) -> dict:
     }
 
 
-def ev_predicted_vs_realized(ev_predicted: Sequence[float], r_realized: Sequence[float]) -> dict:
+def ev_predicted_vs_realized(ev_predicted: ArrayLike, r_realized: ArrayLike) -> dict:
     """EV medio previsto alla decisione contro R netto medio realizzato sugli stessi candidati."""
     pred, real = _arrays(ev_predicted, r_realized)
     return {"predicted": float(pred.mean()), "realized": float(real.mean()), "gap": float(real.mean() - pred.mean())}

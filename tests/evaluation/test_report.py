@@ -1,6 +1,7 @@
 """P5.05: report dall'archivio (preregistrazione §4-§6). Archivio finto con p note: ogni numero del report
 si confronta con lo stesso calcolo fatto qui sui dati generati."""
 import hashlib
+import sqlite3
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
@@ -101,7 +102,7 @@ def test_report_reads_only(tmp_path):
     before = hashlib.sha256(db.read_bytes()).hexdigest()
     render(analyze(*load(db)))
     assert hashlib.sha256(db.read_bytes()).hexdigest() == before
-    with pytest.raises(Exception):
+    with pytest.raises(sqlite3.OperationalError):
         load(tmp_path / "non_esiste.db")  # in sola lettura non crea un archivio vuoto
     assert not (tmp_path / "non_esiste.db").exists()
 
@@ -111,3 +112,16 @@ def test_main_writes_markdown(tmp_path, capsys):
     _archive(db, days=3)
     assert main(["--db", str(db)]) == 0
     assert "# Report" in capsys.readouterr().out
+
+
+def test_main_prints_on_cp1252_console(tmp_path, monkeypatch):
+    # il terminale Windows usa cp1252, che non ha "Δ": la stampa del report falliva
+    import io
+    import sys
+    db = tmp_path / "a.db"
+    _archive(db, days=3)
+    raw = io.BytesIO()
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(raw, encoding="cp1252"))
+    assert main(["--db", str(db)]) == 0
+    sys.stdout.flush()
+    assert "ΔBSS".encode() in raw.getvalue()

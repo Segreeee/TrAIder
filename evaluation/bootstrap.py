@@ -24,7 +24,7 @@ def cluster_ci(stat: Callable[[np.ndarray], float], clusters: Sequence[Hashable]
         chosen = rng.integers(0, len(by_cluster), len(by_cluster))
         samples.append(stat(np.concatenate([by_cluster[c] for c in chosen])))
     alpha = (1 - level) / 2
-    low, high = np.quantile(samples, [alpha, 1 - alpha])
+    low, high = np.nanquantile(samples, [alpha, 1 - alpha])  # nan: statistica non definita in quel campione
     return float(stat(np.arange(len(clusters)))), float(low), float(high)
 
 
