@@ -17,7 +17,8 @@ H1 = _bars(_trend(160, 0.0002, 1.095), 60, START - timedelta(hours=20))
 
 
 def _cfg():
-    return Settings(_env_file=None, commission_eur_per_lot=7.0)
+    # Beta soltanto: la logistica rifà fit e bootstrap a ogni candela (lenta) ed è provata in tests/app/test_variants.py
+    return Settings(_env_file=None, commission_eur_per_lot=7.0, min_trades_for_model=10_000)
 
 
 class _Market:
