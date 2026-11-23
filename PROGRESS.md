@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** correzioni della review di Fase 3 (R1–R11), poi P5.01 [UTENTE] preregistrazione.
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** P5.01 [UTENTE] preregistrazione (la Fase 3 è chiusa: review fatte, R1–R11 corretti).
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -618,17 +618,17 @@ Passo opzionale, non incluso nel conteggio: importare in sola lettura i 21 trade
 Ognuna in TDD (RED, poi GREEN), un commit per correzione. Rilievi letti nel codice; ciascuno si conferma con il test RED.
 
 *Prima del test in avanti (P5.10):*
-- [ ] R1 — `HORIZON_BARS` ignorato: make_cycle non lo passa a resolve_pending.
-- [ ] R2 — logistica che non converge fa fallire il ciclo: ripiego sulla Beta con log.
-- [ ] R3 — notizie: cache del ciclo precedente (D-015).
-- [ ] R4 — posizioni simulate dall'archivio (D-016).
-- [ ] R5 — risoluzione: nessun esito se le barre non coprono la chiusura del candidato (tetto MAX_BARS, cambio dell'ora legale).
-- [ ] R6 — candela vecchia: l'ultima barra deve chiudere a candle_close, altrimenti ciclo in errore.
-- [ ] R7 — Ctrl+C/SystemExit: il ciclo si chiude come errore prima di propagare.
-- [ ] R8 — riconciliazione: errore isolato per trade.
-- [ ] R9 — avvio: errori di composizione nel log, codice di uscita 1, archivio chiuso.
-- [ ] R10 — stop a 0 pip: HOLD invece di divisione per zero.
-- [ ] R11 — ruff + mypy in requirements-dev.txt (scelta dell'utente).
+- [x] R1 — `HORIZON_BARS` ignorato: make_cycle non lo passa a resolve_pending.
+- [x] R2 — logistica che non converge fa fallire il ciclo: ripiego sulla Beta con log.
+- [x] R3 — notizie: cache del ciclo precedente (D-015).
+- [x] R4 — posizioni simulate dall'archivio (D-016).
+- [x] R5 — risoluzione: nessun esito se le barre non coprono la chiusura del candidato (tetto MAX_BARS, cambio dell'ora legale).
+- [x] R6 — candela vecchia: l'ultima barra deve chiudere a candle_close, altrimenti ciclo in errore.
+- [x] R7 — Ctrl+C/SystemExit: il ciclo si chiude come errore prima di propagare.
+- [x] R8 — riconciliazione: errore isolato per trade.
+- [x] R9 — avvio: errori di composizione nel log, codice di uscita 1, archivio chiuso.
+- [x] R10 — stop a 0 pip: HOLD invece di divisione per zero.
+- [x] R11 — ruff + mypy in requirements-dev.txt (scelta dell'utente).
 
 *Prima degli ordini su demo (P5.11):* R:R minimo uguale a quello di progetto; SL/TP arrotondati alle cifre del simbolo; deal del giorno in ora del server; ordine aperto ma non archiviato se qualcosa fallisce dopo l'invio; DONE_PARTIAL e modalità di riempimento; limiti di volume del simbolo e rischio al prezzo reale; candela in ritardo al riavvio (recover).
 
@@ -961,3 +961,4 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-23: terzo avvio reale (lanciato da Claude, DRY_RUN, broker simulato): EURUSD, GBPUSD, USDCHF con candidato SELL -> HOLD (GATE_EV); cambio EUR reale verificato in archivio (USDCHF: EURCHF 0.92015, pip 10.87 EUR/lotto). USDJPY in errore: EURJPY a 0 alla prima selezione. Corretto: tick() attende la prima quotazione (10 x 0.1 s) prima di dare errore. Nota: costo = solo slippage 0.2 pip finché COMMISSION_EUR_PER_LOT non è nel .env.
 - 2026-11-23: P3.33 fatto: proprietà hypothesis sull'archivio SQLite vero (candidato sì/no, storico con vantaggio, LLM validi o no, notizie, conto minuscolo, posizioni, perdita giornaliera) e un test per ognuno dei 7 esiti della variante di produzione. Unico buco trovato: llm_calls.prompt_text era sempre NULL; ora contiene system + user. 391 test verdi, copertura dominio 98%.
 - 2026-11-23: P3.34 fatto: executions con spread, slippage (pip, positivo = sfavorevole) e commissione (deal di ingresso MT5 o metà della commissione configurata nel SimBroker). Esiti del broker in una tabella nuova, broker_outcomes, accanto a quelli virtuali: outcomes ha una riga per candidato e cambiarne la chiave avrebbe richiesto una migrazione dell'archivio. reconcile_broker a ogni candela; reconciliation_gap con la soglia di 0.1 R (D-008). Lo swap è registrato alla chiusura, in broker_outcomes, non in executions. Limiti marcati: ora di chiusura = ora di rilevazione; cambio EUR del momento della riconciliazione. Schema provato su una copia dell'archivio reale (18 cicli): si applica senza errori. .env.example: commento dei costi allineato a T-010. 397 test verdi, copertura dominio 98%.
+- 2026-11-23: review di fine Fase 3 (code-review + python-review, ruff/mypy assenti dal venv): nessun problema critico di sicurezza; 19 rilievi. Decisioni dell'utente: D-015 (cache delle notizie), D-016 (posizioni simulate dall'archivio), niente controllo "solo demo", ruff + mypy. Corretti in TDD R1–R11 (horizon, logistica, notizie, posizioni simulate, barre che non coprono il candidato, candela vecchia, Ctrl+C, riconciliazione isolata, errori di avvio, stop < 0.1 pip, analisi statica). Aperto T-011 (ora legale del server, scadenza 2027-03-14). I 7 rilievi sugli ordini reali sono in lista per P5.11. 418 test verdi, ruff e mypy puliti, copertura dominio 98%.
