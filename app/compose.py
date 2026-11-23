@@ -86,7 +86,7 @@ def make_cycle(cfg: Settings, ports: Ports, code_version: str,
         for symbol in cfg.symbols:
             run_once(symbol, candle_close, ports, cfg, code_version)
         try:
-            resolve_pending(ports.store, ports.market, clock())
+            resolve_pending(ports.store, ports.market, clock(), horizon=cfg.horizon_bars)
         except Exception:  # si riprova alla candela successiva: gli esiti non scadono
             log.exception("risoluzione virtuale fallita")
         try:

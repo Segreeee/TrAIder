@@ -145,7 +145,7 @@ def test_cycle_runs_every_symbol_then_resolves(monkeypatch, caplog):
     monkeypatch.setattr(compose, "run_once",
                         lambda symbol, close, ports, cfg, code_version: calls.append(("run", symbol, close, code_version)))
 
-    def resolve(store, market, now):
+    def resolve(store, market, now, horizon=96):
         calls.append(("resolve", now))
         raise RuntimeError("barre non disponibili")
 
