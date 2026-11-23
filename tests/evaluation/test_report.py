@@ -152,3 +152,65 @@ def test_since_without_time_zone_is_utc(tmp_path):
     db = tmp_path / "a.db"
     _archive(db, days=6)
     assert main(["--db", str(db), "--dal", "2026-12-04"]) == 0
+
+
+# --- review Python P7.01 --- #
+
+def _store_with(path, start, days, perfect=True, status="done"):
+    store = SqliteStore(str(path))
+    rng = np.random.default_rng(1)
+    for d in range(days):
+        close = start + timedelta(days=d)
+        cycle = store.begin_cycle("EURUSD", close)
+        win = bool(rng.random() < 0.5)
+        cand = Candidate("EURUSD", Direction.BUY, 1.1000, 1.0980, 1.1030, close)
+        for variant, p in (("v7-completo", 0.9 if win else 0.1), ("v2-tecnica", 0.4), ("v1-p0", 0.4)):
+            cid = store.record_candidate(cycle, _rec(variant, cand, p if perfect else 0.4, variant != "v1-p0"))
+            store.record_outcome(cid, Outcome("TP" if win else "SL", None, W if win else -L, 1.5 if win else -1.0,
+                                              "virtuale", close + timedelta(hours=1)))
+        store.finish_cycle(cycle, status, error=None if status == "done" else "x", input_json="{}", config_hash="h1")
+    store.close()
+
+
+def test_interim_verdict_is_never_a_conclusion(tmp_path):
+    # §5: analisi intermedie solo descrittive; con pochi giorni l'IC per giorno degenera e "passerebbe"
+    db = tmp_path / "a.db"
+    _store_with(db, T0, days=5)
+    r = analyze(*load(db))
+    assert r["primary"]["delta_bss"][1] > 0 and not r["primary"]["final"]
+    assert r["primary"]["raw_verdict"] == "gli LLM aggiungono valore"  # quello che il titolo mostrava
+    assert r["primary"]["verdict"] == "non concludente"
+    assert "provvisorio" in render(r)
+
+
+def test_error_cycles_excluded_from_metrics(tmp_path):
+    # §8: i cicli in errore restano nella copertura ma non nelle metriche
+    db = tmp_path / "a.db"
+    _store_with(db, T0, days=3)
+    _store_with(db, T0 + timedelta(days=10), days=2, status="error")
+    r = analyze(*load(db))
+    assert r["variants"]["v7-completo"]["n"] == 3 and r["coverage"]["cycles_error"] == 2
+
+
+def test_cli_report_starts_at_preregistration_unless_asked(tmp_path, capsys):
+    from evaluation.report import PREREG_START
+    db = tmp_path / "a.db"
+    _store_with(db, PREREG_START - timedelta(days=4), days=3)
+    assert main(["--db", str(db)]) == 0
+    assert "Candidati appaiati con esito TP/SL: 0" in capsys.readouterr().out
+    assert main(["--db", str(db), "--tutto"]) == 0  # archivi di backtest: tutte le date
+    assert "Candidati appaiati con esito TP/SL: 3" in capsys.readouterr().out
+
+
+def test_final_at_preregistered_end_date(tmp_path):
+    from evaluation.report import PREREG_END
+    db = tmp_path / "a.db"
+    _store_with(db, T0, days=3)
+    assert not analyze(*load(db))["primary"]["final"]
+    assert analyze(*load(db), now=PREREG_END)["primary"]["final"]
+
+
+def test_trade_counts_shown_next_to_delta_r(tmp_path):
+    db = tmp_path / "a.db"
+    _store_with(db, T0, days=3)
+    assert "TRADE: v7-completo 3, v2-tecnica 3" in render(analyze(*load(db)))

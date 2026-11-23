@@ -106,3 +106,11 @@ def test_backtest_cycles_are_replayable():
         cand, decisions = replay(input_json)
         assert cand is not None and decisions == recorded
         assert json.loads(input_json)["backtest"] is True
+
+
+def test_backtest_refuses_a_non_empty_archive():
+    # review P7.01: rilanciato sullo stesso archivio saltava le candele già presenti con uno storico vuoto
+    store = SqliteStore(":memory:")
+    run_backtest("EURUSD", M15, H1, store, _cfg(), eur_quote_rate=1.10)
+    with pytest.raises(ValueError, match="archivio nuovo"):
+        run_backtest("EURUSD", M15, H1, store, _cfg(), eur_quote_rate=1.10)

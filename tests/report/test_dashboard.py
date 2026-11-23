@@ -108,3 +108,13 @@ def test_labels_follow_what_is_measured(db):  # noqa: F811
 
 def test_positions_use_symbol_decimals(db):  # noqa: F811
     assert '<td class="num">1.10000</td>' in _html(db)  # come nei segnali: 5 decimali, 3 per le coppie JPY
+
+
+def test_weekend_is_not_a_stopped_daemon(db):  # noqa: F811
+    # review P7.01: dal venerdì sera alla domenica sera il demone salta le candele senza archiviarle
+    vm = viewmodel(load_archive(db), production_variant="v7-completo")
+    saturday = datetime(2026, 12, 5, 12, 0, tzinfo=timezone.utc)
+    html = render({**vm, "last_cycle": "2026-12-04T21:45:00+00:00"}, generated_at=saturday)
+    assert "nessun ciclo da" not in html and "Mercato chiuso" in html
+    tuesday = datetime(2026, 12, 8, 12, 0, tzinfo=timezone.utc)
+    assert "nessun ciclo da" in render({**vm, "last_cycle": "2026-12-08T09:00:00+00:00"}, generated_at=tuesday)
