@@ -91,3 +91,18 @@ def test_report_reads_the_backtest_archive(tmp_path):
     r = analyze(*load(db))
     assert r["variants"]["v1-p0"]["n"] > 0 and r["variants"]["v2-tecnica"]["n"] == r["variants"]["v1-p0"]["n"]
     assert r["variants"]["v7-completo"]["available"] == 0  # le varianti LLM non esistono nel backtest
+
+
+def test_backtest_cycles_are_replayable():
+    # review P7.01 (CLAUDE.md: ogni segnale con input completo): dal solo input_json si rifanno candidato e decisioni
+    import json
+    from app.replay import replay
+    store = SqliteStore(":memory:")
+    run_backtest("EURUSD", M15, H1, store, _cfg(), eur_quote_rate=1.10)
+    rows = store.conn.execute("SELECT cycle_id, input_json FROM cycles ORDER BY cycle_id").fetchall()
+    for cycle, input_json in rows[:: max(1, len(rows) // 8)]:
+        recorded = {v: (d, h) for v, d, h in store.conn.execute(
+            "SELECT variant, final_action, hold_reason FROM candidates WHERE cycle_id = ?", (cycle,))}
+        cand, decisions = replay(input_json)
+        assert cand is not None and decisions == recorded
+        assert json.loads(input_json)["backtest"] is True
