@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** P5.03 (bootstrap appaiato per giorno). In attesa [UTENTE]: approvazione di docs/PREREGISTRAZIONE.md.
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** decisione [UTENTE] sulla variante 6 (P5.04), che va fissata nella preregistrazione prima dell'approvazione; poi P5.05 report.
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -964,3 +964,4 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-23: review di fine Fase 3 (code-review + python-review, ruff/mypy assenti dal venv): nessun problema critico di sicurezza; 19 rilievi. Decisioni dell'utente: D-015 (cache delle notizie), D-016 (posizioni simulate dall'archivio), niente controllo "solo demo", ruff + mypy. Corretti in TDD R1–R11 (horizon, logistica, notizie, posizioni simulate, barre che non coprono il candidato, candela vecchia, Ctrl+C, riconciliazione isolata, errori di avvio, stop < 0.1 pip, analisi statica). Aperto T-011 (ora legale del server, scadenza 2027-03-14). I 7 rilievi sugli ordini reali sono in lista per P5.11. 418 test verdi, ruff e mypy puliti, copertura dominio 98%.
 - 2026-11-23: P5.01: bozza di docs/PREREGISTRAZIONE.md con test (9527cee RED, a3d4383 + correzione GREEN). Punto nuovo rispetto al piano: bootstrap per giorno, perché i candidati dello stesso simbolo si sovrappongono nell'orizzonte; analisi finale a 300 candidati risolti e 30 giorni di mercato, o al 2027-03-07 (T-011). In attesa dell'approvazione dell'utente.
 - 2026-11-23: P5.02 fatto: evaluation/metrics.py (584d646 RED, poi GREEN), 14 test con valori a mano e 2 proprietà; porting del riepilogo R lordo/netto legacy. Copertura domain + evaluation 99%. 433 test verdi. Avvio reale prima: macro partito su 3 simboli con notizie in cache, 8 chiamate LLM tutte valide al primo tentativo.
+- 2026-11-23: P5.03 fatto: evaluation/bootstrap.py (4e56d2e RED, 3d5cad5 GREEN): cluster_ci per giorno con B e seme preregistrati, session_of, groups. Un test appena scritto è stato rafforzato (effetto del giorno più forte) e il cambio è dichiarato nel commit. 443 test verdi, copertura domain + evaluation 99%.
