@@ -29,15 +29,20 @@ _ROWS = """SELECT k.cycle_id, y.symbol, y.candle_close_utc, y.config_hash, k.var
            ORDER BY y.candle_close_utc, k.cycle_id"""
 
 
-def load(db: Path) -> tuple[list[dict], list[dict]]:
-    """(righe candidato × variante con l'esito virtuale, cicli). Sola lettura: non crea né modifica il file."""
+def load(db: Path, since: datetime | None = None) -> tuple[list[dict], list[dict]]:
+    """(righe candidato × variante con l'esito virtuale, cicli), solo con chiusura della candela ≥ `since`
+    (§1: i dati della preregistrazione partono dal commit di approvazione). Sola lettura: non crea né modifica."""
     conn = sqlite3.connect(Path(db).resolve().as_uri() + "?mode=ro", uri=True)
     try:
         conn.row_factory = sqlite3.Row
         rows = [dict(r) for r in conn.execute(_ROWS)]
-        cycles = [dict(r) for r in conn.execute("SELECT cycle_id, status, config_hash FROM cycles ORDER BY cycle_id")]
+        cycles = [dict(r) for r in conn.execute(
+            "SELECT cycle_id, status, config_hash, candle_close_utc FROM cycles ORDER BY cycle_id")]
     finally:
         conn.close()
+    if since is not None:
+        rows = [r for r in rows if datetime.fromisoformat(r["candle_close_utc"]) >= since]
+        cycles = [c for c in cycles if datetime.fromisoformat(c["candle_close_utc"]) >= since]
     return rows, cycles
 
 
@@ -192,8 +197,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Report della valutazione in avanti (sola lettura)")
     parser.add_argument("--db", type=Path, default=Path("data/traider.db"))
     parser.add_argument("--out", type=Path, help="file markdown di uscita (default: stampa a video)")
+    parser.add_argument("--dal", type=datetime.fromisoformat,
+                        help="solo cicli con chiusura da questo istante, con fuso (es. 2026-11-23T16:45:00+00:00)")
     args = parser.parse_args(argv)
-    text = render(analyze(*load(args.db)))
+    text = render(analyze(*load(args.db, since=args.dal)))
     if args.out:
         args.out.write_text(text, encoding="utf-8")
     else:
