@@ -3,84 +3,159 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>TrAIder</title>
 <style>
+/* Console di calcolo: fondo quasi nero, linee sottili, numeri monospazio, aurora ciano-indaco sotto i riquadri.
+   Un solo elemento in movimento continuo (il bordo del riquadro d'apertura); il resto si accende solo alla pressione. */
+@property --angle { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
 :root {
-  color-scheme: light;
-  --surface: #f5f7f9;
-  --ink: #17202b;
-  --ink-2: #556070;
-  --rule: #d6dce3;
-  --track: #e3e8ee;
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --alert: #b3261e;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --surface: #151a20;
-    --ink: #e8ecf1;
-    --ink-2: #a3adba;
-    --rule: #2c343e;
-    --track: #232b34;
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --alert: #f2b8b5;
-  }
+  color-scheme: dark;
+  --void: #05070a;
+  --tile: #0a0e14;
+  --line: rgba(150, 180, 220, 0.13);
+  --line-strong: rgba(150, 180, 220, 0.28);
+  --ink: #e4ebf3;
+  --ink-2: #8392a5;
+  --cyan: #22d3ee;
+  --indigo: #7c6cff;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --alert: #ff8a7a;
+  --mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, "SF Mono", Menlo, "Roboto Mono", monospace;
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
 }
 * { box-sizing: border-box; }
+html { background: var(--void); }
 body {
   margin: 0;
-  background: var(--surface);
+  background:
+    radial-gradient(60rem 30rem at 50% -10rem, rgba(124, 108, 255, 0.10), transparent 70%),
+    var(--void);
   color: var(--ink);
-  font: 16px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
-  font-variant-numeric: tabular-nums;
+  font: 15px/1.55 var(--sans);
+  -webkit-tap-highlight-color: transparent;
 }
-main { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+main { max-width: 680px; margin: 0 auto; padding: 28px 16px 56px; display: grid; gap: 22px; }
+
+/* Riquadri: lo sfondo sta su ::after, l'aurora su ::before sotto di esso e ne sborda in basso */
+main > header, main > section {
+  position: relative;
+  isolation: isolate;
+  padding: 20px 18px;
+  border-radius: 12px;
+}
+main > header::after, main > section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(105deg, transparent 38%, rgba(140, 220, 255, 0.13) 50%, transparent 62%) -160% 0 / 260% 100% no-repeat,
+    var(--tile);
+  transition: border-color 600ms ease-out;
+}
+main > header::before, main > section::before {
+  content: "";
+  position: absolute;
+  inset: 40% 8% -22px 8%;
+  z-index: -2;
+  border-radius: 50%;
+  background:
+    radial-gradient(closest-side, rgba(34, 211, 238, 0.55), transparent) 20% 100% / 60% 80% no-repeat,
+    radial-gradient(closest-side, rgba(124, 108, 255, 0.55), transparent) 80% 100% / 60% 80% no-repeat;
+  filter: blur(24px);
+  opacity: 0.5;
+  transition: opacity 900ms cubic-bezier(.2, .7, .2, 1), inset 900ms cubic-bezier(.2, .7, .2, 1);
+}
+/* Pressione: carica (l'aurora cresce finché si tiene premuto) e lampo che attraversa il riquadro */
+main > header:active::before, main > section:active::before { opacity: 0.95; inset: 25% 3% -30px 3%; }
+main > header:active::after, main > section:active::after {
+  border-color: var(--line-strong);
+  animation: sweep 700ms cubic-bezier(.3, .6, .2, 1) both;
+}
+@keyframes sweep { from { background-position: -160% 0, 0 0; } to { background-position: 260% 0, 0 0; } }
+
+/* Riquadro d'apertura: l'unico bordo conico in rotazione */
+main > header { padding: 24px 20px 22px; }
+main > header::after {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(105deg, transparent 38%, rgba(140, 220, 255, 0.13) 50%, transparent 62%) -160% 0 / 260% 100% no-repeat padding-box,
+    linear-gradient(var(--tile), var(--tile)) padding-box,
+    conic-gradient(from var(--angle), var(--line) 0 55%, var(--cyan) 70%, var(--indigo) 82%, var(--line) 95%) border-box;
+  animation: spin 9s linear infinite;
+}
+main > header:active::after { animation: spin 9s linear infinite, sweep 700ms cubic-bezier(.3, .6, .2, 1) both; }
+main > header::before { opacity: 0.65; }
+@keyframes spin { to { --angle: 360deg; } }
+
 h1 {
-  font: 600 clamp(1.9rem, 7vw, 2.6rem)/1.1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
-  letter-spacing: -0.02em;
-  margin: 0 0 8px;
+  font: 600 clamp(1.8rem, 7vw, 2.4rem)/1.08 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -0.025em;
+  margin: 0 0 10px;
 }
-h2 { font-size: 1.15rem; font-weight: 600; margin: 0 0 12px; }
-section { padding: 28px 0 0; margin-top: 28px; border-top: 1px solid var(--rule); }
+h2 { font-size: 1rem; font-weight: 600; margin: 0 0 12px; letter-spacing: -0.005em; }
 p { margin: 0 0 12px; }
 .muted { color: var(--ink-2); }
-.small { font-size: 0.875rem; }
+.small { font-size: 0.8125rem; }
 .alert { color: var(--alert); font-weight: 600; }
-.meter { margin: 16px 0 0; }
-.meter-label { display: flex; justify-content: space-between; font-size: 0.875rem; color: var(--ink-2); }
-.meter-track { height: 6px; background: var(--track); border-radius: 3px; margin-top: 4px; overflow: hidden; }
-.meter-fill { height: 100%; background: var(--ink); border-radius: 3px; }
+
+/* Celle di carica verso le soglie preregistrate */
+.meter { margin: 18px 0 0; }
+.meter-label { display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--ink-2); }
+.meter-label span:last-child { font-family: var(--mono); color: var(--ink); }
+.meter-track { position: relative; height: 3px; background: var(--line); border-radius: 2px; margin-top: 7px; }
+.meter-fill {
+  height: 100%;
+  min-width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--indigo), var(--cyan));
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.65), 0 0 2px rgba(34, 211, 238, 0.9);
+}
+
 .scroll { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-th { text-align: left; font-weight: 600; color: var(--ink-2); padding: 0 12px 6px 0; border-bottom: 1px solid var(--rule); }
-td { padding: 7px 12px 7px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+th { text-align: left; font-weight: 500; color: var(--ink-2); padding: 0 12px 7px 0; border-bottom: 1px solid var(--line-strong); }
+td { padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
 td.num, th.num { text-align: right; }
+td.num { font-family: var(--mono); font-size: 0.78rem; }
 .nowrap { white-space: nowrap; }
-td .muted { font-size: 0.8125rem; }
-dl { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; margin: 0; }
-dt { color: var(--ink-2); }
-dd { margin: 0; text-align: right; font-weight: 600; }
+td .muted { font-size: 0.75rem; }
+.mono { font-family: var(--mono); white-space: nowrap; }
+
+/* Copertura come pannello di contatori */
+dl { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; margin: 0; background: var(--line); border-radius: 8px; overflow: hidden; }
+dl > div { background: var(--tile); padding: 12px 14px; }
+dt { color: var(--ink-2); font-size: 0.75rem; }
+dd { margin: 4px 0 0; font: 500 1.5rem/1 var(--mono); letter-spacing: -0.02em; }
+
 svg { display: block; width: 100%; height: auto; overflow: visible; }
-svg text { fill: var(--ink-2); font-size: 11px; }
-svg .label { fill: var(--ink); font-size: 12px; font-weight: 600; }
-.axis { stroke: var(--rule); stroke-width: 1; }
-.zero { stroke: var(--ink-2); stroke-width: 1; }
-.net { stroke: var(--series-1); fill: none; stroke-width: 2; }
-.gross { stroke: var(--series-2); fill: none; stroke-width: 2; stroke-dasharray: 5 4; }
-.dot-net { fill: var(--series-1); stroke: var(--surface); stroke-width: 2; }
-.dot-gross { fill: var(--series-2); stroke: var(--surface); stroke-width: 2; }
-.dot { fill: var(--ink); stroke: var(--surface); stroke-width: 2; }
+svg text { fill: var(--ink-2); font: 10px var(--mono); }
+svg .label { fill: var(--ink); font: 600 11px var(--mono); }
+.axis { stroke: var(--line); stroke-width: 1; }
+.zero { stroke: var(--line-strong); stroke-width: 1; }
+.net { stroke: var(--series-1); fill: none; stroke-width: 1.5; filter: drop-shadow(0 0 4px rgba(57, 135, 229, 0.6)); }
+.gross { stroke: var(--series-2); fill: none; stroke-width: 1.5; stroke-dasharray: 4 4; }
+.dot-net { fill: var(--series-1); stroke: var(--tile); stroke-width: 2; }
+.dot-gross { fill: var(--series-2); stroke: var(--tile); stroke-width: 2; }
+.dot { fill: var(--cyan); stroke: var(--tile); stroke-width: 2; filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.7)); }
 .hit { fill: transparent; }
-.legend { display: flex; gap: 16px; font-size: 0.875rem; color: var(--ink-2); margin: 0 0 8px; }
-.swatch { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--series-1); vertical-align: middle; margin-right: 6px; }
-.swatch.gross { border-top: 2px dashed var(--series-2); }
-footer { margin-top: 40px; font-size: 0.8125rem; color: var(--ink-2); }
+.legend { display: flex; gap: 16px; font-size: 0.8125rem; color: var(--ink-2); margin: 0 0 10px; }
+.swatch { display: inline-block; width: 18px; height: 0; border-top: 1.5px solid var(--series-1); vertical-align: middle; margin-right: 6px; }
+.swatch.gross { border-top: 1.5px dashed var(--series-2); }
+footer { font-size: 0.75rem; color: var(--ink-2); padding: 4px 2px 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  main > header::after, main > section::after { animation: none !important; }
+  main > header::before, main > section::before { transition: none; }
+}
 </style>
 </head>
-<body>
+<body ontouchstart="">
 <main>
 $hero
 $signals

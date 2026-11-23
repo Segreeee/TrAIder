@@ -70,7 +70,7 @@ def _signals(vm: dict) -> str:
         reason = "" if s["decision"] == "TRADE" else HOLD.get(s["hold_reason"], s["hold_reason"] or "")
         outcome = s["outcome"] or ("aperto" if s["decision"] == "TRADE" else "—")
         rows.append(f"<tr><td><strong>{escape(s['symbol'])}</strong> {escape(s['direction'])}"
-                    f'<div class="muted">{_t(s["time"])}</div></td>'
+                    f'<div class="muted mono">{_t(s["time"])}</div></td>'
                     f'<td class="num nowrap">{s["p"]:.2f} / {s["p_star"]:.2f}</td>'
                     f"<td>{escape(s['decision'])}" + (f'<div class="muted">{escape(reason)}</div>' if reason else "")
                     + f"</td><td>{escape(outcome)}</td></tr>")
@@ -215,10 +215,10 @@ def _calibration(vm: dict) -> str:
 def _coverage(vm: dict) -> str:
     c = vm["coverage"]
     return ("<section><h2>Copertura</h2><dl>"
-            f"<dt>Cicli completati</dt><dd>{c['cycles_done']}</dd>"
-            f"<dt>Cicli in errore</dt><dd>{c['cycles_error']}</dd>"
-            f"<dt>Candidati con esito</dt><dd>{c['resolved']}</dd>"
-            f"<dt>Candidati in attesa di esito</dt><dd>{c['pending']}</dd></dl></section>")
+            f"<div><dt>Cicli completati</dt><dd>{c['cycles_done']}</dd></div>"
+            f"<div><dt>Cicli in errore</dt><dd>{c['cycles_error']}</dd></div>"
+            f"<div><dt>Candidati con esito</dt><dd>{c['resolved']}</dd></div>"
+            f"<div><dt>In attesa di esito</dt><dd>{c['pending']}</dd></div></dl></section>")
 
 
 def render(vm: dict, generated_at: datetime) -> str:
