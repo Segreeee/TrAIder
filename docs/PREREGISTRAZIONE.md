@@ -1,6 +1,6 @@
 # Preregistrazione della valutazione in avanti (Fase 5)
 
-**Stato:** BOZZA, da approvare. Il commit che la segna come approvata è la marca temporale: va fatto **prima** di raccogliere i dati che la analizzano.
+**Stato:** APPROVATA dall'utente il 2026-11-23. Questo commit è la marca temporale: i dati analizzati sono quelli raccolti dopo.
 **Domanda:** gli LLM locali, usati come estrattori di caratteristiche (D-002), migliorano la stima della probabilità di TP e il risultato netto rispetto alla sola analisi tecnica, dopo i costi?
 
 ## 1. Disegno
