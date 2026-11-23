@@ -55,6 +55,9 @@ class Mt5Data:
         t = self._mt5.symbol_info_tick(symbol)
         if t is None:
             raise RuntimeError(f"nessun tick per {symbol}: {self._mt5.last_error()}")
+        # Appena selezionato, il simbolo può avere bid/ask a 0 finché non arriva la prima quotazione.
+        if t.bid <= 0 or t.ask <= 0:
+            raise RuntimeError(f"tick vuoto per {symbol} (bid={t.bid}, ask={t.ask}): quotazione non ancora arrivata")
         return float(t.bid), float(t.ask)
 
     def eur_quote_rate(self, symbol: str) -> float:
