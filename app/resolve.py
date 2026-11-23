@@ -9,14 +9,38 @@ Limite noto del simulatore (rischio 2 di ALTERNATIVE.md): nessuno slippage sull'
 import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Optional
+
+import pandas as pd
 
 from domain.outcome import first_hit, realized_result
 from domain.pip import pip_size, pip_value_eur
-from ports import Broker, MarketData, Outcome, SignalStore
+from ports import Broker, CandidateRecord, MarketData, Outcome, SignalStore
 
 log = logging.getLogger(__name__)
 HORIZON, MAX_BARS, MARGIN = 96, 5000, 5
 M15 = timedelta(minutes=15)
+
+
+def virtual_outcome(rec: CandidateRecord, bars: pd.DataFrame, horizon: int = HORIZON) -> Optional[Outcome]:
+    """Esito virtuale di un candidato sulle barre M15 (bid) dalla sua chiusura in poi: lo stesso simulatore
+    per il demone e per il backtest (P5.06). None se né TP né SL sono toccati e l'orizzonte non è completo."""
+    c = rec.candidate
+    pip = pip_size(c.symbol)
+    future = bars[bars["timestamp"] >= c.candle_close_utc].head(horizon).reset_index(drop=True)
+    spread = future["spread"] * pip / 10  # punti MT5 -> prezzo; usato per le uscite SELL
+    hit = first_hit(c.direction.value, c.tp, c.sl, future, spread)
+    if hit is not None:
+        result, exit_price, i = hit
+    elif len(future) >= horizon:
+        last = float(future["close"].iloc[-1])
+        exit_price = last if c.direction.value == "BUY" else last + float(spread.iloc[-1])  # SELL esce all'ask
+        result, i = "TIMEOUT", horizon - 1
+    else:
+        return None
+    r = realized_result(c.direction.value, c.entry, exit_price, c.sl, pip, rec.cost_pips)
+    exit_close = future["timestamp"].iloc[i].to_pydatetime() + M15
+    return Outcome(result, exit_price, r["r_multiple"], r["r_multiple_gross"], "virtuale", exit_close)
 
 
 def resolve_pending(store: SignalStore, market: MarketData, now: datetime, horizon: int = HORIZON) -> int:
@@ -37,21 +61,10 @@ def resolve_pending(store: SignalStore, market: MarketData, now: datetime, horiz
                 log.warning("%s: le barre lette non coprono la chiusura %s del candidato %s, non lo risolvo",
                             symbol, c.candle_close_utc, cid)
                 continue
-            future = bars[bars["timestamp"] >= c.candle_close_utc].head(horizon).reset_index(drop=True)
-            spread = future["spread"] * pip_size(symbol) / 10  # punti MT5 -> prezzo; usato per le uscite SELL
-            hit = first_hit(c.direction.value, c.tp, c.sl, future, spread)
-            if hit is not None:
-                result, exit_price, i = hit
-            elif len(future) >= horizon:
-                last = float(future["close"].iloc[-1])
-                exit_price = last if c.direction.value == "BUY" else last + float(spread.iloc[-1])  # SELL esce all'ask
-                result, i = "TIMEOUT", horizon - 1
-            else:
+            outcome = virtual_outcome(rec, bars, horizon)
+            if outcome is None:
                 continue  # né tocchi né orizzonte completo: si riprova al prossimo ciclo
-            r = realized_result(c.direction.value, c.entry, exit_price, c.sl, pip_size(symbol), rec.cost_pips)
-            exit_close = future["timestamp"].iloc[i].to_pydatetime() + M15
-            written += store.record_outcome(cid, Outcome(result, exit_price, r["r_multiple"], r["r_multiple_gross"],
-                                                         "virtuale", exit_close))
+            written += store.record_outcome(cid, outcome)
     return written
 
 
