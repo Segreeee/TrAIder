@@ -47,3 +47,33 @@ def test_real_configuration_is_hidden_from_tests():
 def test_real_env_file_is_not_read_by_tests():
     from app.config import Settings
     assert Settings().mt5_login == ""  # anche se il .env reale ha MT5_LOGIN
+
+
+# --- P3.30: niente confidenza dichiarata, dashboard in sola lettura --- #
+
+ROOT = __import__("pathlib").Path(__file__).resolve().parents[1]
+
+
+def _imports(path):
+    import ast
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    names = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.update(a.name for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            names.add(node.module)
+    return names
+
+
+def test_no_module_imports_confidence():
+    offenders = [str(p.relative_to(ROOT)) for p in ROOT.rglob("*.py")
+                 if ".venv" not in p.parts and "core.confidence" in _imports(p)]
+    assert offenders == []
+    assert not (ROOT / "core" / "confidence.py").exists()
+
+
+def test_dashboard_has_no_llm_or_broker_imports():
+    forbidden = {"core.qwen_brain", "core.ensemble", "core.executor", "core.prompt_builder", "core.data_feed",
+                 "core.news_feed", "adapters.llm_openai", "adapters.mt5_broker", "adapters.mt5_data", "MetaTrader5"}
+    assert _imports(ROOT / "dashboard.py") & forbidden == set()
