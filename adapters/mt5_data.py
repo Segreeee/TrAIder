@@ -1,6 +1,7 @@
 """Dati di mercato da MetaTrader5. Il modulo mt5 è iniettato (nei test FakeMt5): questo file
 non importa MetaTrader5; lo fa solo la composizione all'avvio. Solo lettura, nessun ordine."""
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
@@ -14,11 +15,13 @@ log = logging.getLogger(__name__)
 # timeframe -> (costante MT5, minuti). server_offset_hours vale fino a 30 minuti: la sonda usa sempre M15.
 _TIMEFRAMES = {"M15": ("TIMEFRAME_M15", 15), "H1": ("TIMEFRAME_H1", 60)}
 COLUMNS = ["timestamp", "open", "high", "low", "close", "volume", "spread"]
+QUOTE_WAIT_S, QUOTE_TRIES = 0.1, 10   # attesa della prima quotazione dopo symbol_select: ~1 s in tutto
 
 
 class Mt5Data:
-    def __init__(self, mt5, clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc)):
-        self._mt5, self._clock = mt5, clock
+    def __init__(self, mt5, clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+                 sleep: Callable[[float], None] = time.sleep):
+        self._mt5, self._clock, self._sleep = mt5, clock, sleep
         self._offset: Optional[int] = None
 
     def _server_offset(self, symbol: str) -> int:
@@ -53,9 +56,14 @@ class Mt5Data:
         if not self._mt5.symbol_select(symbol, True):
             raise RuntimeError(f"simbolo non disponibile: {symbol}")
         t = self._mt5.symbol_info_tick(symbol)
+        # Appena selezionato, il simbolo può avere bid/ask a 0 finché non arriva la prima quotazione.
+        for _ in range(QUOTE_TRIES):
+            if t is None or (t.bid > 0 and t.ask > 0):
+                break
+            self._sleep(QUOTE_WAIT_S)
+            t = self._mt5.symbol_info_tick(symbol)
         if t is None:
             raise RuntimeError(f"nessun tick per {symbol}: {self._mt5.last_error()}")
-        # Appena selezionato, il simbolo può avere bid/ask a 0 finché non arriva la prima quotazione.
         if t.bid <= 0 or t.ask <= 0:
             raise RuntimeError(f"tick vuoto per {symbol} (bid={t.bid}, ask={t.ask}): quotazione non ancora arrivata")
         return float(t.bid), float(t.ask)
