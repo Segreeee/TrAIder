@@ -167,11 +167,39 @@ Non devi fare nulla ora. Quando arriviamo al passo, ti scrivo la domanda precisa
 |---|---|---|
 | P3.29 | ✅ Fatto (conferme date all'approvazione del piano) | — |
 | P3.31 | ✅ Fatto il 2026-11-23: codice vecchio cancellato su tua conferma (recuperabile da git) | — |
-| P5.01 | Leggere e approvare la "preregistrazione": quali metriche e soglie useremo, scritte **prima** di raccogliere dati | 💬 |
-| P5.08 | Scegliere il modello del giudice locale e scaricarlo: nel terminale `ollama pull <nome-modello>` | 🖥️ |
-| P5.10 | Avviare il programma in simulazione e programmarlo nell'**Utilità di pianificazione** di Windows. Ti darò le istruzioni passo passo | 🖥️ |
+| P5.01 | ✅ Fatto il 2026-11-23: preregistrazione approvata (commit 8d8b8c2, 16:41 UTC) | — |
+| P5.08 | Codice pronto (D-018: giudice su API esterna). Quando scegli il fornitore (B1) si lancia a mano: `.venv\Scripts\python -m evaluation.judge_batch`. Ogni lancio costa: 5 chiamate per ciclo giudicato, sul 20% dei cicli | 🖥️ |
+| P5.10 | Pronto: istruzioni nella sezione E qui sotto | 🖥️ |
 | P5.11 | **Ordini sul conto demo:** solo se e quando lo decidi tu. Imposti tu nel `.env` i due flag del doppio consenso e me lo confermi in chat. Io non li tocco mai | 🖥️ + 💬 |
 | P6.03 | Confermare la rimozione della vecchia dashboard Streamlit e scegliere come vedere la nuova dal telefono (Tailscale o cartella sincronizzata) | 💬 |
+
+---
+
+## E. 🖥️ P5.10 — Avviare il test in avanti (DRY_RUN, broker simulato)
+
+La preregistrazione è approvata: da adesso ogni ciclo conta. Il programma resta in simulazione (nessun ordine).
+
+1. **Market Watch di MT5:** aggiungi in modo permanente EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF e le
+   coppie di conversione EURJPY, EURCAD, EURCHF (tasto destro nel Market Watch → Simboli). Così le quotazioni
+   arrivano sempre e i cicli non finiscono in "candela non ancora disponibile".
+2. **Il PC non deve andare in sospensione:** Impostazioni → Sistema → Alimentazione → sospensione "Mai"
+   quando è collegato alla corrente. MT5 e Ollama devono restare aperti.
+3. **Supervisore (Utilità di pianificazione):** "Crea attività" (non "attività di base"):
+   - *Generale:* nome `TrAIder`, "Esegui solo se l'utente è connesso" (serve il terminale MT5 aperto).
+   - *Attivazione:* "All'accesso", poi "Ripeti attività ogni **15 minuti**" per "**Illimitatamente**".
+   - *Azione:* programma `C:\Users\39342\Desktop\TrAIder\.venv\Scripts\python.exe`,
+     argomenti `main.py`, "Inizia in" `C:\Users\39342\Desktop\TrAIder`.
+   - *Impostazioni:* "Se l'attività è già in esecuzione: **Non avviare una nuova istanza**"; togli
+     "Interrompi l'attività se viene eseguita per più di…".
+
+   Se il programma si ferma (errore, riavvio del PC) riparte entro 15 minuti. Le candele perse non si
+   recuperano (D-010): il report le conta nella copertura.
+4. **Nessuna modifica in corsa (§7):** durante la raccolta non cambiare `.env`, simboli, modello Ollama né
+   codice. Se devi farlo, dimmelo prima: si apre una nuova serie.
+5. **Controllo:** `logs/traider.log` ha una riga per simbolo a ogni candela. Il report si legge quando vuoi,
+   solo sui cicli dopo l'approvazione:
+   `.venv\Scripts\python -m evaluation.report --dal 2026-11-23T16:45:00+00:00`
+   A 100 candidati risolti facciamo insieme l'analisi intermedia (solo descrittiva).
 
 ---
 

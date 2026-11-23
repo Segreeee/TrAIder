@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** decisioni [UTENTE]: approvazione di docs/PREREGISTRAZIONE.md (sblocca P5.10), modello del giudice di un'altra famiglia (sblocca P5.08). Senza di esse si può procedere con la Fase 6 (dashboard).
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** [UTENTE] avvio del test in avanti (P5.10, istruzioni in AZIONI_UTENTE.md §E); intanto Fase 6 (P6.01 view-model). Fornitore del giudice (Q-001) quando l'utente lo sceglie.
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -971,3 +971,4 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-23: P5.07 fatto: evaluation/judge.py (d681880 RED, 6528344 GREEN): schema chiuso, prompt alla cieca con ordine a seme, controlli deterministici, veto che solo toglie.
 - 2026-11-23: P5.09 fatto: evaluation/judge_metrics.py (2f286d8 RED, a94aec9 GREEN). 458 test verdi.
 - 2026-11-23: primo backtest reale (EURUSD, 3000 barre M15, ~37 giorni di calendario, 2 minuti): 2055 candidati, 2052 risolti. v2-tecnica contro p0: BSS −0.015, IC 95% per giorno [−0.034, 0.006], AUC 0.476: le caratteristiche tecniche non mostrano valore predittivo su questo mese. Il gate ha lasciato passare 3 TRADE di v2, tutti in perdita (−3.22 R netti). Circa 55 candidati al giorno: conferma la scelta del bootstrap per giorno. Un mese solo: risultato descrittivo, non conclusivo. Nota: la sezione "metrica primaria" del report non ha senso sul backtest (v7 non esiste); il CLI del backtest non ha stampato il riepilogo finale (archivio scritto correttamente), da verificare.
+- 2026-11-23: preregistrazione approvata dall'utente (8d8b8c2, 16:41 UTC); D-018 ed emendamento E1 (giudice su API esterna, campione 20%, notizie incluse). P5.08 fatto (cf45100 RED, a241409 GREEN): evaluation/judge_batch.py, coda del giudice e veto in ombra nell'archivio. Report con --dal per escludere i cicli di prova. Istruzioni P5.10 in AZIONI_UTENTE.md §E. 472 test verdi.
