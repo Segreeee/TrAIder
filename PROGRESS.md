@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** P3.30 (rimozione di core/confidence.py e della pipeline della dashboard). In attesa [UTENTE]: secondo avvio `python main.py --once` dopo la correzione del Market Watch.
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** P3.31 (rimozione dei moduli legacy: serve la conferma dell'utente). In attesa [UTENTE]: secondo avvio `python main.py --once` dopo la correzione del Market Watch.
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -934,3 +934,4 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-22: P3.28 fatto: app/scheduler.py, app/compose.py, main.py riscritto (--once). Il flusso legacy non è più raggiungibile da main.py. Con il .env dell'utente il broker composto è quello simulato (verificato leggendo solo i flag). 373 passed.
 - 2026-11-23: primo avvio reale (`python main.py --once`, gemma3:12b su RTX 3050 da 4 GB): 4 simboli su 6 chiusi bene (EURUSD con candidato e 4 varianti archiviate; prima chiamata LLM 302 s in 3 tentativi per il caricamento del modello, poi ~25 s). USDCAD e USDCHF falliti: EURCAD/EURCHF fuori dal Market Watch, tick letto senza symbol_select. Corretto (e083df2 RED, poi GREEN). Aggiunti log per simbolo e per chiamata LLM (ebab8e2 RED, a132874 GREEN): un avvio sulla stessa candela ora dice "già elaborata". 379 passed.
 - 2026-11-23: P3.29 fatto: tests/regression/test_legacy_guarantees.py. 24 delle 30 garanzie legacy erano già coperte nei moduli nuovi; il file verifica che quei test esistano (protezione per P3.31) e aggiunge le 2 mancanti (lotto mai dall'LLM, tutti gli analisti giù). Ritirati i 2 test del giudice decisore (b); Yahoo (3) resta per T-002; il riepilogo R lordo/netto passa a P5.02. 405 passed.
+- 2026-11-23: P3.30 fatto: core/confidence.py rimosso; dashboard.py in sola lettura (statistiche e storico legacy, nessun import di LLM, MT5 o broker; tolto anche il pulsante "Verifica esiti", che scriveva lo storico legacy e apriva MT5). Prova headless con streamlit AppTest: 0 eccezioni, 67 righe di storico. 407 passed.
