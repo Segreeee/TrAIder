@@ -133,3 +133,15 @@ def test_sell_timeout_exits_at_ask():
     market = PathMarket(before=[1.1000] * 5, after=[1.0999] * 100)
     resolve_pending(store, market, _now(market))
     assert store.outcomes[cid].exit_price == pytest.approx(1.0999 + 0.00008)
+
+
+def test_no_outcome_when_bars_do_not_reach_the_close(monkeypatch, caplog):
+    # review di fine Fase 3 (R5): con il tetto MAX_BARS le barre lette possono partire dopo la chiusura
+    # del candidato; prima venivano prese tutte come "successive" e l'esito (definitivo) era sbagliato
+    import app.resolve as resolve
+    monkeypatch.setattr(resolve, "MAX_BARS", 3)
+    store, cid = _store_with()
+    market = PathMarket(before=[1.1000] * 5, after=[1.1000] * 10 + [1.1035] * 3)
+    assert resolve_pending(store, market, _now(market)) == 0
+    assert cid not in store.outcomes
+    assert "non coprono" in caplog.text
