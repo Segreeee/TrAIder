@@ -126,7 +126,28 @@ def check_open_sim_positions(make_store):
     assert store.open_sim_positions() == []
 
 
+def check_judge_queue_and_veto_once(make_store):
+    # P5.08: coda del giudice per la variante scelta, con input, motivazioni valide e veto scritto una volta
+    from app.extractors import AnalystView
+    store = make_store()
+    cycle = store.begin_cycle("EURUSD", CLOSE)
+    a = store.record_candidate(cycle, _record("v7-completo"))
+    store.record_candidate(cycle, _record("v2-tecnica"))
+    view = AnalystView(direzione=1, forza=2, orizzonte="intraday", motivazioni=["trend al rialzo"])
+    store.record_llm_call(cycle, "tecnico", LlmResult(view, "{}", "m", "d", "v1", 1.0, 1, 1, 1, True))
+    store.record_llm_call(cycle, "macro", LlmResult(None, "rotto", "m", "d", "v1", 1.0, 1, 1, 3, False, "schema"))
+    store.finish_cycle(cycle, "done", input_json='{"htf_trend": "rialzista"}')
+    (item,) = store.judge_queue("v7-completo")
+    assert (item.cycle_id, item.record, item.input_json) == (cycle, _record("v7-completo"), '{"htf_trend": "rialzista"}')
+    assert item.views == {"tecnico": ["trend al rialzo"]}  # le chiamate non valide non danno pareri
+    store.set_veto_shadow(cycle, True)
+    assert store.judge_queue("v7-completo") == []
+    with pytest.raises(ValueError):
+        store.set_veto_shadow(cycle, False)
+    assert a is not None
+
+
 ALL = [check_finish_cycle_once, check_resolved_history_per_variant, check_begin_cycle_idempotent,
        check_candidate_unique_per_variant, check_outcome_recorded_once, check_pending_excludes_resolved,
        check_llm_call_and_execution_are_kept, check_pending_roundtrip_keeps_the_record,
-       check_broker_outcome_beside_virtual, check_open_sim_positions]
+       check_broker_outcome_beside_virtual, check_open_sim_positions, check_judge_queue_and_veto_once]
