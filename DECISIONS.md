@@ -124,7 +124,7 @@ Le analisi complete con le matrici stanno in `docs/ALTERNATIVE.md`.
 |----|------|--------------|-------------|-------|
 | T-001 | `git rm --cached` di `logs/signals_history.json` e `logs/backtest_*.csv` (restano su disco) | claude, su conferma | Fase 7 | fatto il 2026-11-23 su conferma dell'utente: tolti dall'indice con git rm --cached, i file restano su disco e sono già in .gitignore |
 | T-002 | `YahooNewsFeed` non usata: rimuoverla o tenerla come adattatore di prova | utente | D-005 | da fare |
-| T-003 | Ricordare all'utente di configurare l'email "noreply" di GitHub per i commit | claude | Fase 7 | da fare |
+| T-003 | Ricordare all'utente di configurare l'email "noreply" di GitHub per i commit | claude | Fase 7 | fatto: email noreply nella config locale della repo dal 2026-11-23; i commit precedenti restano con l'email personale (riscrittura insieme ai log legacy, decisione al push) |
 | T-004 | Controllo della direzione di TP/SL mancante (`abs()` nel calcolo di R:R) | claude | Fase 3, primi passi | fatto (21f63eb) |
 | T-005 | `.claude/` è in `.gitignore`: le regole deny valgono solo su questa macchina | utente | Guardrail | da decidere |
 | T-006 | `ALLOW_LIVE_TRADING` non esiste nel codice: un solo flag basta per ordini reali | claude | Fase 3, primo passo | fatto (7b415a2) |

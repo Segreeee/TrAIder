@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** [UTENTE] push del branch (rimandato dall'utente); prima: email noreply (T-003), eventuale pulizia della storia per i log legacy, revisione del README. Test in avanti in corso dal 2026-11-23 18:00 (demone avviato dall'Utilità di pianificazione). Fornitore del giudice (Q-001) quando l'utente lo sceglie.
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** [UTENTE] push del branch (rimandato dall'utente); prima: eventuale pulizia della storia per i log legacy, revisione del README. Test in avanti in corso dal 2026-11-23 18:00 (demone avviato dall'Utilità di pianificazione). Fornitore del giudice (Q-001) quando l'utente lo sceglie.
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
