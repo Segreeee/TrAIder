@@ -7,6 +7,10 @@ Funziona per timeframe fino a 30 minuti (l'errore massimo resta sotto la mezz'or
 """
 from datetime import datetime, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
+
+NEW_YORK = ZoneInfo("America/New_York")
+NY_CLOSE_SHIFT_HOURS = 7  # ora del server = ora di New York + 7: la chiusura di NY (17:00) cade a mezzanotte
 
 
 def server_offset_hours(bar_open_epoch: int, utc_now: datetime, tf_minutes: int) -> Optional[int]:
@@ -23,3 +27,13 @@ def server_offset_hours(bar_open_epoch: int, utc_now: datetime, tf_minutes: int)
 def to_utc(server_epoch: int, offset_hours: int) -> datetime:
     """Converte un epoch nell'ora del server in un datetime UTC."""
     return datetime.fromtimestamp(server_epoch - offset_hours * 3600, tz=timezone.utc)
+
+
+def ny_close_offset_hours(utc: datetime) -> int:
+    """Scarto (server − UTC) dei server MT5 a "New York + 7" (MetaQuotes, Pepperstone): segue l'ora legale USA,
+    +2 d'inverno e +3 d'estate (T-011). Funzione pura: tzdata, nessun I/O."""
+    if utc.tzinfo is None:
+        raise ValueError("utc deve avere un fuso orario")
+    offset = utc.astimezone(NEW_YORK).utcoffset()
+    assert offset is not None
+    return int(offset.total_seconds() // 3600) + NY_CLOSE_SHIFT_HOURS

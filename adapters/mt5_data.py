@@ -7,7 +7,7 @@ from typing import Callable, Optional
 
 import pandas as pd
 
-from domain.clock import server_offset_hours
+from domain.clock import NEW_YORK, NY_CLOSE_SHIFT_HOURS, ny_close_offset_hours, server_offset_hours
 from domain.pip import conversion_symbol
 
 log = logging.getLogger(__name__)
@@ -23,6 +23,7 @@ class Mt5Data:
                  sleep: Callable[[float], None] = time.sleep):
         self._mt5, self._clock, self._sleep = mt5, clock, sleep
         self._offset: Optional[int] = None
+        self._rule_warned = False
 
     def _server_offset(self, symbol: str) -> int:
         """Ricalcolato a ogni chiamata dalla barra M15 in formazione; se il mercato è chiuso
@@ -48,8 +49,24 @@ class Mt5Data:
         if rates is None or len(rates) == 0:
             raise RuntimeError(f"nessuna candela per {symbol} {timeframe}: {self._mt5.last_error()}")
         df = pd.DataFrame(rates).rename(columns={"tick_volume": "volume"})
-        df["timestamp"] = pd.to_datetime(df["time"] - offset * 3600, unit="s", utc=True)
+        df["timestamp"] = self._to_utc(df["time"], offset)
+        if df["timestamp"].isna().any():  # ora ripetuta o saltata dal server: solo di domenica, mercato chiuso
+            log.warning("%s: %d barre in un'ora ambigua del cambio d'ora, scartate", symbol, df["timestamp"].isna().sum())
+            df = df[df["timestamp"].notna()].reset_index(drop=True)
         return df[COLUMNS]
+
+    def _to_utc(self, server_epochs: pd.Series, offset: int) -> pd.Series:
+        """T-011: se il server segue la regola "New York + 7" (l'offset misurato adesso coincide con quello della
+        regola), ogni barra si converte con il suo offset, anche a cavallo del cambio d'ora; altrimenti tutte con
+        l'offset di adesso, come prima, e un avviso una volta sola."""
+        if offset == ny_close_offset_hours(self._clock()):
+            ny_local = pd.to_datetime(server_epochs, unit="s") - pd.Timedelta(hours=NY_CLOSE_SHIFT_HOURS)
+            return ny_local.dt.tz_localize(NEW_YORK.key, ambiguous="NaT", nonexistent="NaT").dt.tz_convert("UTC")
+        if not self._rule_warned:
+            log.warning("offset del server %+d diverso dalla regola New York + 7: ogni barra usa l'offset di adesso "
+                        "(barre a cavallo di un cambio d'ora sbagliate di un'ora, T-011)", offset)
+            self._rule_warned = True
+        return pd.to_datetime(server_epochs - offset * 3600, unit="s", utc=True)
 
     def tick(self, symbol: str) -> tuple[float, float]:
         # Un simbolo fuori dal Market Watch (es. EURCAD per il pip di USDCAD) non ha tick finché non è selezionato.
