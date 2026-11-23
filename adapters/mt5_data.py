@@ -49,6 +49,9 @@ class Mt5Data:
         return df[COLUMNS]
 
     def tick(self, symbol: str) -> tuple[float, float]:
+        # Un simbolo fuori dal Market Watch (es. EURCAD per il pip di USDCAD) non ha tick finché non è selezionato.
+        if not self._mt5.symbol_select(symbol, True):
+            raise RuntimeError(f"simbolo non disponibile: {symbol}")
         t = self._mt5.symbol_info_tick(symbol)
         if t is None:
             raise RuntimeError(f"nessun tick per {symbol}: {self._mt5.last_error()}")
