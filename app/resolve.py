@@ -6,6 +6,7 @@ R netto con il costo registrato al momento della decisione. resolved_at = chiusu
 Barre bid: i BUY escono sul bid, i SELL sull'ask (bid + spread della barra) (T-010).
 Limite noto del simulatore (rischio 2 di ALTERNATIVE.md): nessuno slippage sull'uscita.
 """
+import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -13,6 +14,7 @@ from domain.outcome import first_hit, realized_result
 from domain.pip import pip_size, pip_value_eur
 from ports import Broker, MarketData, Outcome, SignalStore
 
+log = logging.getLogger(__name__)
 HORIZON, MAX_BARS, MARGIN = 96, 5000, 5
 M15 = timedelta(minutes=15)
 
@@ -30,6 +32,11 @@ def resolve_pending(store: SignalStore, market: MarketData, now: datetime, horiz
         bars = market.closed_bars(symbol, "M15", count)
         for cid, rec in items:
             c = rec.candidate
+            if bars.empty or bars["timestamp"].iloc[0] >= c.candle_close_utc:
+                # l'esito è definitivo: meglio nessun esito che uno calcolato su barre che non seguono il candidato
+                log.warning("%s: le barre lette non coprono la chiusura %s del candidato %s, non lo risolvo",
+                            symbol, c.candle_close_utc, cid)
+                continue
             future = bars[bars["timestamp"] >= c.candle_close_utc].head(horizon).reset_index(drop=True)
             spread = future["spread"] * pip_size(symbol) / 10  # punti MT5 -> prezzo; usato per le uscite SELL
             hit = first_hit(c.direction.value, c.tp, c.sl, future, spread)
