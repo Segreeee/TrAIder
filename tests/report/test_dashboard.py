@@ -56,9 +56,7 @@ def test_text_from_archive_is_escaped(tmp_path):
     from tests.report.test_viewmodel import _cycle
     path = tmp_path / "x.db"
     store = SqliteStore(str(path))
-    _cycle(store, "EURUSD", NOW, "HOLD")
-    store.conn.execute("UPDATE cycles SET symbol = '<img src=x onerror=alert(1)>'")
-    store.conn.commit()
+    _cycle(store, "<img src=x onerror=alert(1)>", NOW, "HOLD")  # l'archivio è a sola aggiunta: si scrive così
     store.close()
     html = _html(path)
     assert "<img src=x" not in html and "&lt;img" in html

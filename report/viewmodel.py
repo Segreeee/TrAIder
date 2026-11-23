@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from domain.exposure import currency_exposure
-from evaluation.report import PRIMARY, analyze, load
+from evaluation.report import FINAL_MIN_CANDIDATES, FINAL_MIN_DAYS, PRIMARY, analyze, load
 
 _POSITIONS = """SELECT y.symbol, k.direction, e.lots, e.fill_price, k.sl, k.tp FROM executions e
                 JOIN candidates k USING (candidate_id) JOIN cycles y USING (cycle_id)
@@ -66,4 +66,7 @@ def viewmodel(a: Archive, production_variant: str = PRIMARY, last_n: int = 20) -
         "coverage": analysis["coverage"],
         "verdict": analysis["primary"]["verdict"],
         "final": analysis["primary"]["final"],
+        "progress": {"n": analysis["primary"]["n"], "n_target": FINAL_MIN_CANDIDATES,
+                     "days": analysis["primary"]["days"], "days_target": FINAL_MIN_DAYS},
+        "last_cycle": max((c["candle_close_utc"] for c in a.cycles), default=None),
     }
