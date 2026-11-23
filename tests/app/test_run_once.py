@@ -276,3 +276,12 @@ def test_interrupt_closes_cycle_as_error_then_propagates():
     finished = ports.store.finished[1]
     assert finished["status"] == "error" and "KeyboardInterrupt" in finished["error"]
     assert json.loads(finished["input_json"])["symbol"] == "EURUSD"
+
+
+def test_closed_market_skips_without_archiving(caplog):
+    # review P7.01: nel weekend ogni candela diventava un ciclo in errore con traceback, 6 simboli ogni 15 minuti
+    caplog.set_level("INFO")
+    ports = _ports()
+    report = run_once("EURUSD", CLOSE + timedelta(hours=2), ports, _cfg())  # ultima barra di 2 ore prima
+    assert report.status == "skipped" and ports.store.cycles == {} and ports.technical.calls == []
+    assert any("mercato chiuso" in m for m in _messages(caplog))

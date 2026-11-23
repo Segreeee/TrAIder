@@ -181,3 +181,54 @@ def test_server_not_following_the_rule_keeps_single_offset(caplog):
     df = _data(FakeMt5(NOW, offset_hours=5)).closed_bars("EURUSD", "M15", 3)
     assert df["timestamp"].iloc[-1].to_pydatetime() == datetime(2026, 3, 2, 11, 45, tzinfo=timezone.utc)
     assert "New York + 7" in caplog.text
+
+
+class _LateBarMt5(FakeMt5):
+    """Il terminale riceve il primo tick della barra nuova con qualche secondo di ritardo: le prime letture
+    vedono ancora come "in formazione" la barra precedente."""
+
+    def __init__(self, *a, late_reads=2, **kw):
+        super().__init__(*a, **kw)
+        self.late_reads = late_reads
+
+    def copy_rates_from_pos(self, symbol, tf, start, count):
+        rates = super().copy_rates_from_pos(symbol, tf, start, count)
+        if self.late_reads > 0:
+            if start == 1:  # la lettura delle barre chiuse consuma un ritardo
+                self.late_reads -= 1
+            rates = rates.copy()
+            rates["time"] -= self._TF_SECONDS[tf]
+        return rates
+
+
+JUST_CLOSED = datetime(2026, 3, 2, 12, 0, 10, tzinfo=timezone.utc)  # lo scheduler parte 10 s dopo la chiusura
+
+
+def _late(late_reads, sleeps):
+    mt5 = _LateBarMt5(JUST_CLOSED, late_reads=late_reads)
+    return Mt5Data(mt5, clock=lambda: JUST_CLOSED, sleep=sleeps.append)
+
+
+def test_one_bar_late_waits_for_the_new_bar():
+    # review P7.01: USDCAD e USDCHF erano finiti in errore con la barra nuova in ritardo di pochi secondi
+    sleeps = []
+    df = _late(2, sleeps).closed_bars("EURUSD", "M15", 3)
+    assert df["timestamp"].iloc[-1].to_pydatetime() == datetime(2026, 3, 2, 11, 45, tzinfo=timezone.utc)
+    assert len(sleeps) == 2 and sum(sleeps) <= 10
+
+
+def test_one_bar_late_gives_up_after_the_wait_budget():
+    sleeps = []
+    df = _late(1000, sleeps).closed_bars("EURUSD", "M15", 3)
+    assert df["timestamp"].iloc[-1].to_pydatetime() == datetime(2026, 3, 2, 11, 30, tzinfo=timezone.utc)
+    assert 0 < sum(sleeps) <= 10  # poi decide run_once: ciclo in errore, mai dati vecchi
+
+
+def test_closed_market_does_not_wait():
+    sleeps = []
+    mt5 = FakeMt5(NOW)
+    data = _data(mt5, sleeps)
+    data.closed_bars("EURUSD", "M15", 3)  # offset noto da una lettura a mercato aperto
+    mt5.market_open = False                # poi il weekend: barre vecchie di giorni, nessuna attesa
+    data.closed_bars("EURUSD", "M15", 3)
+    assert sleeps == []
