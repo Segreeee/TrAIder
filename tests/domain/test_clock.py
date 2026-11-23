@@ -52,3 +52,13 @@ def test_offset_recovered_for_any_time(seconds, offset, tf):
 @given(epoch=st.integers(min_value=0, max_value=2_000_000_000), offset=st.integers(min_value=-12, max_value=14))
 def test_roundtrip_to_utc(epoch, offset):
     assert to_utc(epoch + offset * 3600, offset) == datetime.fromtimestamp(epoch, tz=timezone.utc)
+
+
+def test_ny_close_offset_follows_us_dst():
+    # T-011: server MT5 a "New York + 7" (MetaQuotes, Pepperstone): UTC+2 d'inverno, UTC+3 con l'ora legale USA
+    from domain.clock import ny_close_offset_hours
+    utc = timezone.utc
+    assert ny_close_offset_hours(datetime(2026, 11, 23, 12, tzinfo=utc)) == 2   # misurato il 2026-11-22
+    assert ny_close_offset_hours(datetime(2027, 3, 13, 12, tzinfo=utc)) == 2
+    assert ny_close_offset_hours(datetime(2027, 3, 15, 12, tzinfo=utc)) == 3   # dopo il 14 marzo 2027
+    assert ny_close_offset_hours(datetime(2026, 7, 1, 12, tzinfo=utc)) == 3

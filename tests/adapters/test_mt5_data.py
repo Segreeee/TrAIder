@@ -2,6 +2,8 @@
 ricalcolando l'offset del server a ogni chiamata, colonna spread conservata."""
 from datetime import datetime, timezone
 
+import numpy as np
+import pandas as pd
 import pytest
 
 from adapters.mt5_data import Mt5Data
@@ -147,3 +149,35 @@ def test_empty_tick_gives_up_after_about_one_second():
 def test_tick_unknown_symbol_raises_clearly():
     with pytest.raises(RuntimeError, match="simbolo non disponibile: EURXYZ"):
         _data(_MarketWatchMt5(NOW)).tick("EURXYZ")
+
+
+class _DstMt5(FakeMt5):
+    """Server a "New York + 7" che attraversa il cambio dell'ora legale USA del 2027-03-14: ogni barra ha il suo
+    offset (le barre prima del cambio sono a +2, quelle dopo a +3)."""
+
+    def copy_rates_from_pos(self, symbol, tf, start, count):
+        from domain.clock import ny_close_offset_hours
+        self.rate_calls.append((start, count))
+        step = self._TF_SECONDS[tf]
+        forming = int(self.now.timestamp()) // step * step
+        opens_utc = forming - step * (start + np.arange(count)[::-1])
+        times = [int(t) + 3600 * ny_close_offset_hours(datetime.fromtimestamp(int(t), timezone.utc))
+                 for t in opens_utc]
+        dtype = [("time", "i8"), ("open", "f8"), ("high", "f8"), ("low", "f8"),
+                 ("close", "f8"), ("tick_volume", "i8"), ("spread", "i4"), ("real_volume", "i8")]
+        return np.array([(t, 1.1, 1.1004, 1.0996, 1.1, 100, 7, 0) for t in times], dtype=dtype)
+
+
+def test_bars_across_dst_change_keep_true_utc():
+    # T-011: con l'offset di adesso (+3) applicato a tutte le barre, quelle prima del cambio slittavano di un'ora
+    now = datetime(2027, 3, 15, 12, 7, tzinfo=timezone.utc)
+    df = Mt5Data(_DstMt5(now), clock=lambda: now, sleep=lambda s: None).closed_bars("EURUSD", "M15", 400)
+    expected = pd.date_range(end=datetime(2027, 3, 15, 11, 45, tzinfo=timezone.utc), periods=400, freq="15min")
+    assert list(df["timestamp"]) == list(expected)
+
+
+def test_server_not_following_the_rule_keeps_single_offset(caplog):
+    # se l'offset misurato non è quello della regola (server con un altro fuso), resta la conversione di prima
+    df = _data(FakeMt5(NOW, offset_hours=5)).closed_bars("EURUSD", "M15", 3)
+    assert df["timestamp"].iloc[-1].to_pydatetime() == datetime(2026, 3, 2, 11, 45, tzinfo=timezone.utc)
+    assert "New York + 7" in caplog.text
