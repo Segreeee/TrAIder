@@ -198,7 +198,7 @@ La preregistrazione è approvata: da adesso ogni ciclo conta. Il programma resta
    codice. Se devi farlo, dimmelo prima: si apre una nuova serie.
 5. **Controllo:** `logs/traider.log` ha una riga per simbolo a ogni candela. Il report si legge quando vuoi,
    solo sui cicli dopo l'approvazione:
-   `.venv\Scripts\python -m evaluation.report --dal 2026-11-23T16:45:00+00:00`
+   `.venv\Scripts\python -m evaluation.report` (parte da solo dall'inizio della preregistrazione)
    A 100 candidati risolti facciamo insieme l'analisi intermedia (solo descrittiva).
 
 ---

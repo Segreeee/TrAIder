@@ -9,6 +9,7 @@ from html import escape
 from pathlib import Path
 from string import Template
 
+from domain.clock import NEW_YORK
 from evaluation.report import PRIMARY
 from report.viewmodel import load_archive, viewmodel
 
@@ -37,6 +38,12 @@ def _signed(x: float) -> str:
     return f"{x:+.2f}".replace("-", "−")
 
 
+def _fx_closed(t: datetime) -> bool:
+    """Forex chiuso dal venerdì alle 17:00 alla domenica alle 17:00 di New York (vale anche con l'ora legale)."""
+    ny = t.astimezone(NEW_YORK)
+    return ny.weekday() == 5 or (ny.weekday() == 4 and ny.hour >= 17) or (ny.weekday() == 6 and ny.hour < 17)
+
+
 def _meter(label: str, value: int, target: int) -> str:
     pct = min(100.0, 100.0 * value / target) if target else 0.0
     return (f'<div class="meter"><div class="meter-label"><span>{label}</span><span>{value} su {target}</span></div>'
@@ -55,7 +62,10 @@ def _hero(vm: dict, now: datetime) -> str:
         status = '<p class="alert">Nessun ciclo nell\'archivio.</p>'
     else:
         age = now - datetime.fromisoformat(vm["last_cycle"])
-        if age > STALE_AFTER:
+        if _fx_closed(now) or _fx_closed(now - STALE_AFTER):
+            status = (f'<p class="muted small">Mercato chiuso: il demone salta le candele fino alla riapertura '
+                      f'(domenica, 17:00 di New York). Ultima candela elaborata: {_t(vm["last_cycle"])} UTC.</p>')
+        elif age > STALE_AFTER:
             status = (f'<p class="alert">Attenzione: nessun ciclo da {age.total_seconds() / 3600:.1f} ore '
                       f'(ultimo: {_t(vm["last_cycle"])} UTC). Il demone è fermo?</p>')
         else:
@@ -244,7 +254,7 @@ def render(vm: dict, generated_at: datetime) -> str:
 def write_dashboard(db: str | Path, out: str | Path, production_variant: str, now: datetime) -> None:
     """Rigenera la pagina dall'archivio (sola lettura) con scrittura atomica: file temporaneo nella stessa
     cartella e os.replace, così chi la apre (anche da una cartella sincronizzata) non vede mai metà pagina."""
-    html = render(viewmodel(load_archive(Path(db)), production_variant=production_variant), generated_at=now)
+    html = render(viewmodel(load_archive(Path(db)), production_variant=production_variant, now=now), generated_at=now)
     target = Path(out)
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_name(target.name + ".tmp")

@@ -80,7 +80,7 @@ python -m venv .venv
 copy .env.example .env      (poi compilare: resta DRY_RUN=true)
 .venv\Scripts\python main.py --once      # una sola candela
 .venv\Scripts\python main.py             # demone, allineato alle candele M15
-.venv\Scripts\python -m evaluation.report --dal 2026-11-23T16:45:00+00:00
+.venv\Scripts\python -m evaluation.report    # dall'inizio della preregistrazione; --tutto per un backtest
 ```
 
 La dashboard (`DASHBOARD_PATH`) è una pagina HTML statica rigenerata a ogni candela, leggibile offline anche dal

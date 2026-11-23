@@ -22,6 +22,7 @@ from evaluation.metrics import auc, brier, brier_skill, calibration_deciles, log
 PRIMARY, BASELINE = "v7-completo", "v2-tecnica"
 # §1 della preregistrazione: primo ciclo dopo il commit di approvazione 8d8b8c2 (16:41 UTC)
 PREREG_START = datetime(2026, 11, 23, 16, 45, tzinfo=timezone.utc)
+PREREG_END = datetime(2027, 3, 7, tzinfo=timezone.utc)  # §1: fine della raccolta se le soglie non arrivano prima
 FINAL_MIN_CANDIDATES, FINAL_MIN_DAYS = 300, 30
 VERDICTS = ("gli LLM aggiungono valore", "gli LLM peggiorano", "non concludente")
 
@@ -29,6 +30,7 @@ _ROWS = """SELECT k.cycle_id, y.symbol, y.candle_close_utc, y.config_hash, k.var
                   k.direction, k.p_star, k.ev, k.hold_reason, k.entry_ref, k.sl, k.tp, k.lot,
                   o.resolution, o.r_net, o.r_gross
            FROM candidates k JOIN cycles y USING (cycle_id) LEFT JOIN outcomes o USING (candidate_id)
+           WHERE y.status = 'done'  -- §8: i cicli in errore restano nella copertura, non nelle metriche
            ORDER BY y.candle_close_utc, k.cycle_id"""
 
 
@@ -75,10 +77,10 @@ def _variant(name: str, rows: list[dict], n_resolved: int) -> dict:
     return out
 
 
-def _primary(by_cycle: dict[int, dict[str, dict]], n_days: int) -> dict:
+def _primary(by_cycle: dict[int, dict[str, dict]], n_days: int, now: datetime | None = None) -> dict:
     pairs = [(v[PRIMARY], v[BASELINE]) for v in by_cycle.values()
              if PRIMARY in v and BASELINE in v and v[PRIMARY]["resolution"] in ("TP", "SL")]
-    out: dict = {"n": len(pairs), "days": n_days, "delta_bss": None, "delta_r": None}
+    out: dict = {"n": len(pairs), "days": n_days, "delta_bss": None, "delta_r": None, "trades": (0, 0)}
     if pairs:
         y = np.array([a["resolution"] == "TP" for a, _ in pairs], dtype=float)
         pa, pb = np.array([a["p"] for a, _ in pairs]), np.array([b["p"] for _, b in pairs])
@@ -90,6 +92,7 @@ def _primary(by_cycle: dict[int, dict[str, dict]], n_days: int) -> dict:
                     if PRIMARY in v and BASELINE in v and v[PRIMARY]["resolution"] is not None]
         ta = np.array([a["final_action"] == "TRADE" for a, _ in resolved])
         tb = np.array([b["final_action"] == "TRADE" for _, b in resolved])
+        out["trades"] = (int(ta.sum()), int(tb.sum()))
         if ta.any() and tb.any():
             ra = np.array([a["r_net"] for a, _ in resolved], dtype=float)
             rb = np.array([b["r_net"] for _, b in resolved], dtype=float)
@@ -102,12 +105,15 @@ def _primary(by_cycle: dict[int, dict[str, dict]], n_days: int) -> dict:
 
     bss, dr = out["delta_bss"], out["delta_r"]
     if bss is not None and bss[1] > 0 and dr is not None and not dr[2] < 0:
-        out["verdict"] = VERDICTS[0]
+        out["raw_verdict"] = VERDICTS[0]
     elif bss is not None and bss[2] < 0:
-        out["verdict"] = VERDICTS[1]
+        out["raw_verdict"] = VERDICTS[1]
     else:
-        out["verdict"] = VERDICTS[2]  # anche quando ΔR non è calcolabile (nessun TRADE): non si conclude
-    out["final"] = out["n"] >= FINAL_MIN_CANDIDATES and n_days >= FINAL_MIN_DAYS
+        out["raw_verdict"] = VERDICTS[2]  # anche quando ΔR non è calcolabile (nessun TRADE): non si conclude
+    out["final"] = ((out["n"] >= FINAL_MIN_CANDIDATES and n_days >= FINAL_MIN_DAYS)
+                    or (now is not None and now >= PREREG_END))
+    # §5: prima dell'analisi finale l'esito è solo descrittivo; con pochi giorni l'IC per giorno degenera
+    out["verdict"] = out["raw_verdict"] if out["final"] else VERDICTS[2]
     return out
 
 
@@ -124,7 +130,7 @@ def _descriptive(rows: list[dict], key) -> dict:
     return out
 
 
-def analyze(rows: list[dict], cycles: list[dict]) -> dict:
+def analyze(rows: list[dict], cycles: list[dict], now: datetime | None = None) -> dict:
     series = Counter(c["config_hash"] for c in cycles)
     # il ciclo in corso non ha ancora config_hash (lo scrive finish_cycle): la serie è quella dell'ultimo chiuso
     latest = next((c["config_hash"] for c in reversed(cycles) if c["config_hash"] is not None), None)
@@ -144,7 +150,7 @@ def analyze(rows: list[dict], cycles: list[dict]) -> dict:
                      "resolved": resolved, "pending": len(by_cycle) - resolved},
         "variants": {name: _variant(name, [r for r in rows if r["variant"] == name], resolved)
                      for name in VARIANTS},
-        "primary": _primary(by_cycle, len(days)),
+        "primary": _primary(by_cycle, len(days), now),
         "by_symbol": _descriptive(rows, lambda r: r["symbol"]),
         "by_session": _descriptive(rows, lambda r: session_of(datetime.fromisoformat(r["candle_close_utc"]))),
     }
@@ -170,11 +176,12 @@ def render(r: dict) -> str:
         f"## Metrica primaria: {PRIMARY} contro {BASELINE}", "",
         f"Candidati appaiati con esito TP/SL: {pr['n']} in {pr['days']} giorni.",
         f"- ΔBSS (IC 95% per giorno): {_ci(pr['delta_bss'])}",
-        f"- Δ R netto medio sui TRADE: {_ci(pr['delta_r'])}",
+        f"- Δ R netto medio sui TRADE: {_ci(pr['delta_r'])} "
+        f"(TRADE: {PRIMARY} {pr['trades'][0]}, {BASELINE} {pr['trades'][1]})",
         f"- Esito secondo la §6: **{pr['verdict']}**",
         "" if pr["final"] else
-        f"- Analisi solo descrittiva: l'analisi finale richiede almeno {FINAL_MIN_CANDIDATES} candidati "
-        f"e {FINAL_MIN_DAYS} giorni.", "",
+        f"- Esito provvisorio, solo descrittivo (§5): l'analisi finale richiede almeno {FINAL_MIN_CANDIDATES} "
+        f"candidati e {FINAL_MIN_DAYS} giorni, oppure la data di fine {PREREG_END:%Y-%m-%d}.", "",
         "## Varianti", "",
         "| Variante | n TP/SL | Brier | BSS vs p0 [IC 95%] | log-loss | AUC | TRADE | R netto medio TRADE [IC] | R netto / lordo | drawdown |",
         "|---|---|---|---|---|---|---|---|---|---|",
@@ -203,10 +210,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Report della valutazione in avanti (sola lettura)")
     parser.add_argument("--db", type=Path, default=Path("data/traider.db"))
     parser.add_argument("--out", type=Path, help="file markdown di uscita (default: stampa a video)")
-    parser.add_argument("--dal", type=datetime.fromisoformat,
-                        help="solo cicli con chiusura da questo istante, con fuso (es. 2026-11-23T16:45:00+00:00)")
+    parser.add_argument("--dal", type=datetime.fromisoformat, default=PREREG_START,
+                        help="solo cicli con chiusura da questo istante (default: inizio della preregistrazione)")
+    parser.add_argument("--tutto", action="store_true", help="tutte le date (archivi di backtest)")
     args = parser.parse_args(argv)
-    text = render(analyze(*load(args.db, since=args.dal)))
+    since = None if args.tutto else args.dal
+    text = render(analyze(*load(args.db, since=since), now=datetime.now(timezone.utc)))
     if args.out:
         args.out.write_text(text, encoding="utf-8")
     else:

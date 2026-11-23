@@ -58,8 +58,8 @@ def run_backtest(symbol: str, m15: pd.DataFrame, h1: pd.DataFrame, store: Signal
             continue
         cand, features = generated
         cycle = store.begin_cycle(symbol, close)
-        if cycle is None:
-            continue  # candela già nel backtest (rilancio sullo stesso archivio)
+        if cycle is None:  # candela già presente: lo storico walk-forward ripartirebbe vuoto, risultato diverso
+            raise ValueError(f"il backtest va scritto in un archivio nuovo: {symbol} {close} c'è già")
         cycles += 1
         inputs: dict = {"backtest": True, "symbol": symbol, "candle_close_utc": close.isoformat(),
                         "config": cfg.public_config(), "bars_m15": _bars(bars), "bars_htf": _bars(htf),

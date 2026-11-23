@@ -37,7 +37,7 @@ def load_archive(db: Path, since: datetime = PREREG_START) -> Archive:
     return Archive(rows, cycles, positions)
 
 
-def viewmodel(a: Archive, production_variant: str = PRIMARY, last_n: int = 20) -> dict:
+def viewmodel(a: Archive, production_variant: str = PRIMARY, last_n: int = 20, now: datetime | None = None) -> dict:
     prod = [r for r in a.rows if r["variant"] == production_variant]  # in ordine di chiusura
     signals = [{"time": r["candle_close_utc"], "symbol": r["symbol"], "direction": r["direction"], "p": r["p"],
                 "p_star": r["p_star"], "ev": r["ev"], "decision": r["final_action"], "hold_reason": r["hold_reason"],
@@ -50,7 +50,7 @@ def viewmodel(a: Archive, production_variant: str = PRIMARY, last_n: int = 20) -
             net, gross = net + r["r_net"], gross + r["r_gross"]
             curve.append({"time": r["candle_close_utc"], "net": net, "gross": gross})
 
-    analysis = analyze(a.rows, a.cycles)
+    analysis = analyze(a.rows, a.cycles, now)
     variants = [{"name": name, "available": v["available"], "of": v["of"], "n": v["n"],
                  "bss": v["bss"][0] if v.get("bss") else None, "trades": v["trades"],
                  "mean_r_net_trade": v["mean_r_net_trade"][0] if v.get("mean_r_net_trade") else None}
