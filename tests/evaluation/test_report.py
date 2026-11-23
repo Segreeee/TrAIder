@@ -81,7 +81,7 @@ def test_report_on_fake_archive_matches_expected_numbers(tmp_path):
     assert sum(g["n"] for g in r["by_symbol"].values()) == 200
 
     text = render(r)
-    assert f"{v7['bss'][0]:.3f}" in text and "non concludente" in text or "aggiungono" in text or "peggiorano" in text
+    assert f"{v7['bss'][0]:.3f}" in text and r["primary"]["verdict"] in text
     assert "solo descrittiv" in text
 
 
