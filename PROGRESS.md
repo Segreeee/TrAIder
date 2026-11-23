@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** P5.05 report (con la disponibilità delle varianti 4/5 di P5.04). In attesa [UTENTE]: approvazione di docs/PREREGISTRAZIONE.md.
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** P5.06 (backtest senza LLM delle varianti 1 e 2). In attesa [UTENTE]: approvazione di docs/PREREGISTRAZIONE.md, che sblocca P5.10.
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -966,3 +966,4 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-23: P5.02 fatto: evaluation/metrics.py (584d646 RED, poi GREEN), 14 test con valori a mano e 2 proprietà; porting del riepilogo R lordo/netto legacy. Copertura domain + evaluation 99%. 433 test verdi. Avvio reale prima: macro partito su 3 simboli con notizie in cache, 8 chiamate LLM tutte valide al primo tentativo.
 - 2026-11-23: P5.03 fatto: evaluation/bootstrap.py (4e56d2e RED, 3d5cad5 GREEN): cluster_ci per giorno con B e seme preregistrati, session_of, groups. Un test appena scritto è stato rafforzato (effetto del giorno più forte) e il cambio è dichiarato nel commit. 443 test verdi, copertura domain + evaluation 99%.
 - 2026-11-23: D-017: variante 6 non realizzata (scelta dell'utente); P5.04 ridotto alla disponibilità delle varianti 4/5, che il report mostra; preregistrazione aggiornata.
+- 2026-11-23: P5.04 (ridotto da D-017) e P5.05 fatti: evaluation/report.py (b9b2644 e f1c0753 RED, poi GREEN). Sull'archivio reale: 24 cicli completati, 6 in errore, 7 candidati risolti in un giorno, esito non concludente come atteso. 448 test verdi; copertura domain + evaluation 98%.
