@@ -90,4 +90,4 @@ def test_atomic_write_no_partial_file(db, tmp_path, monkeypatch):  # noqa: F811
     except RuntimeError:
         pass
     assert out.read_text(encoding="utf-8") == "pagina precedente"  # il telefono non vede mai una pagina a metà
-    assert [p.name for p in tmp_path.iterdir()] == ["dashboard.html"]  # nessun file temporaneo lasciato
+    assert not [p.name for p in tmp_path.iterdir() if p.name.endswith(".tmp")]  # nessun file temporaneo lasciato

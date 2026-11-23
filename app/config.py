@@ -11,6 +11,8 @@ from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 SECRET_FIELDS = {"mt5_password", "finnhub_api_key", "remote_judge_api_key"}
+# Non influenzano le decisioni: fuori da config_hash, così cambiarli non apre una nuova serie (§7 della preregistrazione)
+OUTPUT_FIELDS = {"dashboard_path"}
 
 
 class Settings(BaseSettings):
@@ -76,6 +78,7 @@ class Settings(BaseSettings):
 
     # --- Archivio ---
     db_path: str = "data/traider.db"
+    dashboard_path: str = "data/dashboard.html"   # P6.03: anche una cartella sincronizzata per il telefono
 
     @field_validator("symbols", mode="before")
     @classmethod
@@ -101,10 +104,11 @@ class Settings(BaseSettings):
         return self
 
     def public_config(self) -> dict:
-        """Configurazione archiviabile in ogni ciclo: senza segreti né credenziali del conto MT5."""
-        return self.model_dump(mode="json", exclude=SECRET_FIELDS | {"mt5_login", "mt5_server", "mt5_path"})
+        """Configurazione archiviabile in ogni ciclo: senza segreti, credenziali del conto MT5 né percorsi personali."""
+        return self.model_dump(mode="json",
+                               exclude=SECRET_FIELDS | OUTPUT_FIELDS | {"mt5_login", "mt5_server", "mt5_path"})
 
     def config_hash(self) -> str:
         """Impronta della configurazione senza segreti: va in ogni ciclo archiviato."""
-        data = self.model_dump(mode="json", exclude=SECRET_FIELDS)
+        data = self.model_dump(mode="json", exclude=SECRET_FIELDS | OUTPUT_FIELDS)
         return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[:16]

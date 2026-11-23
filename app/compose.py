@@ -22,6 +22,7 @@ from adapters.sqlite_store import SqliteStore
 from app.config import Settings
 from app.resolve import reconcile_broker, resolve_pending
 from app.run_once import Ports, broker_from_settings, run_once
+from report.dashboard import write_dashboard
 
 log = logging.getLogger(__name__)
 
@@ -99,4 +100,8 @@ def make_cycle(cfg: Settings, ports: Ports, code_version: str,
             reconcile_broker(ports.store, ports.broker, ports.market)
         except Exception:
             log.exception("riconciliazione con il broker fallita")
+        try:  # P6.03: la pagina non decide nulla, un suo errore non ferma il demone
+            write_dashboard(cfg.db_path, cfg.dashboard_path, cfg.production_variant, clock())
+        except Exception:
+            log.exception("dashboard non aggiornata")
     return cycle

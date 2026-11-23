@@ -3,10 +3,13 @@
 Grafici in SVG inline (niente librerie né URL esterni): tooltip nativi con <title>, etichette dirette a fine
 linea, valori anche nel testo. Tutto il testo che viene dall'archivio passa da html.escape.
 """
+import os
 from datetime import datetime, timedelta
 from html import escape
 from pathlib import Path
 from string import Template
+
+from report.viewmodel import load_archive, viewmodel
 
 TEMPLATE = Template((Path(__file__).parent / "template.html").read_text(encoding="utf-8"))
 STALE_AFTER = timedelta(minutes=30)  # due candele senza cicli: il demone è fermo
@@ -223,3 +226,14 @@ def render(vm: dict, generated_at: datetime) -> str:
         hero=_hero(vm, generated_at), signals=_signals(vm), positions=_positions(vm), curve=_curve(vm),
         variants=_variants(vm), calibration=_calibration(vm), coverage=_coverage(vm),
         generated=generated_at.strftime("%d/%m/%Y %H:%M"))
+
+
+def write_dashboard(db: str | Path, out: str | Path, production_variant: str, now: datetime) -> None:
+    """Rigenera la pagina dall'archivio (sola lettura) con scrittura atomica: file temporaneo nella stessa
+    cartella e os.replace, così chi la apre (anche da una cartella sincronizzata) non vede mai metà pagina."""
+    html = render(viewmodel(load_archive(Path(db)), production_variant=production_variant), generated_at=now)
+    target = Path(out)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_name(target.name + ".tmp")
+    tmp.write_text(html, encoding="utf-8")
+    os.replace(tmp, target)
