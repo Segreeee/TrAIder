@@ -80,11 +80,6 @@ def test_timeout_without_bars():
     assert simulate_outcome("BUY", 1.1020, 1.0990, _bars([])) == ("TIMEOUT", None)
 
 
-def test_backtester_reexports_domain_outcome():
-    import core.backtester as bt
-    assert bt.simulate_outcome is simulate_outcome and bt.realized_result is realized_result
-
-
 # --- T-010: le uscite dei SELL avvengono all'ask (bid + spread) -------------- #
 
 

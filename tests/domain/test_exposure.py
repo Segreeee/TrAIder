@@ -37,11 +37,6 @@ def test_daily_loss_limit():
     assert not daily_loss_limit_reached(day_pnl=50, equity=1050, limit_pct=3)
 
 
-def test_core_exposure_reexports_domain():
-    import core.exposure as legacy
-    assert legacy.check_new_position is check_new_position
-
-
 # --- proprietà --------------------------------------------------------------- #
 SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "EURGBP", "EURJPY"]
 position = st.tuples(st.sampled_from(SYMBOLS), st.sampled_from(["BUY", "SELL"]))

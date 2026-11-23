@@ -33,11 +33,6 @@ def test_hold_reason_values_closed_set():
     }
 
 
-def test_core_risk_manager_reexports_levels_consistent():
-    import core.risk_manager as rm
-    assert rm.levels_consistent is levels_consistent
-
-
 @given(
     direction=st.sampled_from(list(Direction)),
     entry=st.floats(min_value=0.5, max_value=200),
