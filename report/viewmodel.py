@@ -40,7 +40,8 @@ def viewmodel(a: Archive, production_variant: str = PRIMARY, last_n: int = 20) -
     prod = [r for r in a.rows if r["variant"] == production_variant]  # in ordine di chiusura
     signals = [{"time": r["candle_close_utc"], "symbol": r["symbol"], "direction": r["direction"], "p": r["p"],
                 "p_star": r["p_star"], "ev": r["ev"], "decision": r["final_action"], "hold_reason": r["hold_reason"],
-                "outcome": r["resolution"], "r_net": r["r_net"]} for r in reversed(prod[-last_n:])]
+                "outcome": r["resolution"], "r_net": r["r_net"], "entry": r["entry_ref"], "sl": r["sl"], "tp": r["tp"],
+                "lot": r["lot"]} for r in reversed(prod[-last_n:])]
 
     curve, net, gross = [], 0.0, 0.0
     for r in prod:

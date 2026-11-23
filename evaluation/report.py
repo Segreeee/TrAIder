@@ -24,7 +24,8 @@ FINAL_MIN_CANDIDATES, FINAL_MIN_DAYS = 300, 30
 VERDICTS = ("gli LLM aggiungono valore", "gli LLM peggiorano", "non concludente")
 
 _ROWS = """SELECT k.cycle_id, y.symbol, y.candle_close_utc, y.config_hash, k.variant, k.p, k.p0, k.final_action,
-                  k.direction, k.p_star, k.ev, k.hold_reason, o.resolution, o.r_net, o.r_gross
+                  k.direction, k.p_star, k.ev, k.hold_reason, k.entry_ref, k.sl, k.tp, k.lot,
+                  o.resolution, o.r_net, o.r_gross
            FROM candidates k JOIN cycles y USING (cycle_id) LEFT JOIN outcomes o USING (candidate_id)
            ORDER BY y.candle_close_utc, k.cycle_id"""
 

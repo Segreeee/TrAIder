@@ -67,7 +67,12 @@ def _signals(vm: dict) -> str:
         return "<section><h2>Ultimi segnali</h2><p class=\"muted\">Nessun segnale: compaiono al primo candidato.</p></section>"
     rows = []
     for s in vm["signals"]:
-        reason = "" if s["decision"] == "TRADE" else HOLD.get(s["hold_reason"], s["hold_reason"] or "")
+        if s["decision"] == "TRADE":
+            d = 3 if s["symbol"].upper().endswith("JPY") else 5
+            reason = (f"ingresso {s['entry']:.{d}f}, stop {s['sl']:.{d}f}, target {s['tp']:.{d}f}, "
+                      f"{s['lot'] or 0:.2f} lotti")
+        else:
+            reason = HOLD.get(s["hold_reason"], s["hold_reason"] or "")
         outcome = s["outcome"] or ("aperto" if s["decision"] == "TRADE" else "—")
         rows.append(f"<tr><td><strong>{escape(s['symbol'])}</strong> {escape(s['direction'])}"
                     f'<div class="muted mono">{_t(s["time"])}</div></td>'
@@ -76,7 +81,8 @@ def _signals(vm: dict) -> str:
                     + f"</td><td>{escape(outcome)}</td></tr>")
     return ("<section><h2>Ultimi segnali</h2>"
             '<p class="muted small">p è la probabilità stimata di TP, p* quella di pareggio dopo i costi; '
-            "l'esito è quello virtuale, anche per i HOLD. Orari UTC.</p>"
+            "l'esito è quello virtuale, anche per i HOLD. Orari UTC. Per copiare un TRADE a mano: i livelli valgono "
+            "alla chiusura della candela e il lotto è calcolato sul capitale simulato, non sul saldo del tuo conto.</p>"
             '<div class="scroll"><table><thead><tr><th>Candela</th><th class="num">p / p*</th><th>Decisione</th>'
             "<th>Esito</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div></section>")
 
