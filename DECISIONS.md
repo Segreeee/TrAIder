@@ -98,6 +98,13 @@ Le analisi complete con le matrici stanno in `docs/ALTERNATIVE.md`.
 - **Decisione e motivo:** dall'archivio (scelta dell'utente): sopravvivono ai riavvii e si chiudono con l'esito virtuale.
 - **Nota:** proposto e rifiutato dall'utente un controllo "solo conto demo" nel broker MT5: restano doppio consenso e conferma nella conversazione.
 
+### D-017 — Variante 6 (decisore legacy in ombra) non realizzata  ·  Stato: Accettata  ·  2026-11-23
+- **Contesto:** P5.04 prevedeva il vecchio prompt decisore in sola ombra, per confronto con il sistema legacy.
+- **Alternative:** **non farla** / farla dietro un flag disattivato di default.
+- **Decisione e motivo:** scelta dell'utente: non farla. Costa una terza chiamata LLM per candidato (ciclo da ~4 a ~6 minuti su 6 simboli) e misura un ruolo, l'LLM decisore, già escluso da D-002. Il confronto con il legacy resta descrittivo (storico della vecchia dashboard).
+- **Conseguenze:** P5.04 si riduce alla disponibilità delle varianti 4/5 nel report; la preregistrazione la esclude.
+- **Cosa farebbe cambiare idea:** serve un confronto quantitativo con il vecchio sistema per il portfolio → nuova serie dedicata, mai a metà della raccolta.
+
 ## Domande aperte
 - Q-001 — Fornitore del giudice remoto (campione 20%, D-012): lo sceglie l'utente. Fino ad allora solo giudice locale. Non blocca la Fase 2: la porta LLM è indipendente dal fornitore.
 - Q-005 — Soglia di attivazione del modello logistico (2026-11-22, P3.26). La regola della specifica "Brier skill score > 0 fuori campione" si attiva **per caso**: con caratteristiche senza informazione (600 esiti, split 70/30) il BSS esce positivo in 4 semi su 10 (0.0002, 0.0015, 0.0044, 0.0096). Il gate su EV_5 resta una seconda protezione (il p5 da bootstrap è prudente), ma la regola da sola non distingue segnale da rumore. Proposte: (a) estremo inferiore di un intervallo bootstrap al 90% del BSS > 0; (b) soglia fissa, es. BSS ≥ 0.01; (c) test di rapporto di verosimiglianza contro β = 0 con p < 0.05. Raccomandazione: (a), coerente con l'uso di p5 nel gate. Il test `test_uninformative_features_keep_beta` è segnato xfail strict finché non si decide. **Chiusa il 2026-11-22: l'utente sceglie (a).**

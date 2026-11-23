@@ -1,5 +1,5 @@
 # PROGRESS
-**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** decisione [UTENTE] sulla variante 6 (P5.04), che va fissata nella preregistrazione prima dell'approvazione; poi P5.05 report.
+**Stato:** Fase 3 — Implementazione TDD · **Aggiornato:** 2026-11-23 · **Prossima azione:** P5.05 report (con la disponibilità delle varianti 4/5 di P5.04). In attesa [UTENTE]: approvazione di docs/PREREGISTRAZIONE.md.
 
 ## Piano
 | # | Fase | Obiettivo | Criterio di uscita (verificabile) | Stato |
@@ -965,3 +965,4 @@ Rischio residuo da tenere presente: la potenza statistica. Con 100 candidati il 
 - 2026-11-23: P5.01: bozza di docs/PREREGISTRAZIONE.md con test (9527cee RED, a3d4383 + correzione GREEN). Punto nuovo rispetto al piano: bootstrap per giorno, perché i candidati dello stesso simbolo si sovrappongono nell'orizzonte; analisi finale a 300 candidati risolti e 30 giorni di mercato, o al 2027-03-07 (T-011). In attesa dell'approvazione dell'utente.
 - 2026-11-23: P5.02 fatto: evaluation/metrics.py (584d646 RED, poi GREEN), 14 test con valori a mano e 2 proprietà; porting del riepilogo R lordo/netto legacy. Copertura domain + evaluation 99%. 433 test verdi. Avvio reale prima: macro partito su 3 simboli con notizie in cache, 8 chiamate LLM tutte valide al primo tentativo.
 - 2026-11-23: P5.03 fatto: evaluation/bootstrap.py (4e56d2e RED, 3d5cad5 GREEN): cluster_ci per giorno con B e seme preregistrati, session_of, groups. Un test appena scritto è stato rafforzato (effetto del giorno più forte) e il cambio è dichiarato nel commit. 443 test verdi, copertura domain + evaluation 99%.
+- 2026-11-23: D-017: variante 6 non realizzata (scelta dell'utente); P5.04 ridotto alla disponibilità delle varianti 4/5, che il report mostra; preregistrazione aggiornata.

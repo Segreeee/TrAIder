@@ -24,7 +24,7 @@ Stesse candele, stesso candidato, stima di p diversa (`app/variants.py`):
 | `v5-consenso` | tecniche, solo se tecnico e macro concordano col candidato | solo con notizie visibili |
 | `v7-completo` | tecniche + tecnico + macro (variante di produzione) | sempre (macro assente = 0) |
 
-La variante 6 (decisore legacy in ombra) resta fuori: entra solo se P5.04 la attiva **prima** dell'inizio, con un emendamento a questo documento. Le varianti 4 e 5 si confrontano solo sui candidati in cui erano disponibili; quante volte lo sono è riportato.
+La variante 6 (decisore legacy in ombra) è esclusa (D-017): una terza chiamata LLM per candidato e un ruolo, l'LLM decisore, che D-002 ha già scartato. Le varianti 4 e 5 si confrontano solo sui candidati in cui erano disponibili; quante volte lo sono è riportato.
 
 ## 3. Modello di probabilità (fissato)
 
