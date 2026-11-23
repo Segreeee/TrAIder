@@ -13,6 +13,7 @@ Uso con MT5 aperto (solo dati, nessun ordine): python -m evaluation.backtest --s
 """
 import argparse
 import json
+from dataclasses import asdict
 from datetime import timedelta
 from pathlib import Path
 
@@ -22,7 +23,7 @@ from app.candidates import M15, generate
 from app.config import Settings
 from app.decide import Context, decide
 from app.resolve import virtual_outcome
-from app.run_once import HTF_BARS
+from app.run_once import HTF_BARS, _bars
 from app.variants import VARIANTS, estimate
 from domain.costs import cost_pips
 from domain.pip import pip_size, pip_value_eur
@@ -60,10 +61,16 @@ def run_backtest(symbol: str, m15: pd.DataFrame, h1: pd.DataFrame, store: Signal
         if cycle is None:
             continue  # candela già nel backtest (rilancio sullo stesso archivio)
         cycles += 1
+        inputs: dict = {"backtest": True, "symbol": symbol, "candle_close_utc": close.isoformat(),
+                        "config": cfg.public_config(), "bars_m15": _bars(bars), "bars_htf": _bars(htf),
+                        "account": {"equity": ctx.equity, "open_positions": [], "day_pnl": 0.0},
+                        "eur_quote_rate": eur_quote_rate, "pip_value_eur": pip_value, "cost_pips": cost,
+                        "features": dict(features), "variants": {}}
         for name in variants:
             history = [(r, o) for r, o in done[name] if o.resolved_at <= close]  # solo il passato
             est = estimate(VARIANTS[name], cand, features, history, cfg)
             d = decide(cand, est, ctx)
+            inputs["variants"][name] = {"estimate": asdict(est), "llm_invalid": False}
             rec = CandidateRecord(name, cand, cost, est.p, d.p_star, d.ev, d.ev5, d.decision,
                                   d.hold_reason.value if d.hold_reason else None,
                                   p0=p0(cand.d_sl, cand.d_tp), p5=est.p5, lot=d.lot, features=dict(features))
@@ -72,7 +79,8 @@ def run_backtest(symbol: str, m15: pd.DataFrame, h1: pd.DataFrame, store: Signal
             if outcome is not None:
                 store.record_outcome(cid, outcome)
                 done[name].append((rec, outcome))
-        store.finish_cycle(cycle, "done", None, json.dumps({"backtest": True, "eur_quote_rate": eur_quote_rate}),
+        # input completo come nel demone (CLAUDE.md): app/replay.py rifà candidato e decisioni da qui
+        store.finish_cycle(cycle, "done", None, json.dumps(inputs, sort_keys=True, default=float),
                            code_version, cfg.config_hash())
     return cycles
 
