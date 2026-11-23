@@ -60,13 +60,23 @@ def reconcile_broker(store: SignalStore, broker: Broker, market: MarketData) -> 
     R misurato dal prezzo di fill e sulla sua distanza dallo stop; R netto con commissione e swap veri."""
     written = 0
     for cid, rec, ticket, lots, fill_price in store.open_broker_trades():
-        closed = broker.closed_trade(ticket)
-        if closed is None:
-            continue  # ancora aperta: si riprova al prossimo ciclo
-        c, pip = rec.candidate, pip_size(rec.candidate.symbol)
-        gross = realized_result(c.direction.value, fill_price, closed.exit_price, c.sl, pip, 0.0)["r_multiple_gross"]
-        # ponytail: cambio EUR di adesso, non dell'ingresso; scarto < 1% sul valore del pip in un orizzonte di 24 h
-        risk_eur = abs(fill_price - c.sl) / pip * pip_value_eur(c.symbol, market.eur_quote_rate(c.symbol), lots)
-        net = round(gross + (closed.commission_eur + closed.swap_eur) / risk_eur, 3)
-        written += store.record_broker_outcome(cid, closed, gross, net)
+        try:
+            written += _reconcile_one(store, broker, market, cid, rec, ticket, lots, fill_price)
+        except Exception:  # un trade anomalo resta in attesa e si riprova; gli altri vanno avanti
+            log.exception("riconciliazione del candidato %s (ticket %s) fallita", cid, ticket)
     return written
+
+
+def _reconcile_one(store: SignalStore, broker: Broker, market: MarketData, cid: int, rec, ticket: int,
+                   lots: float, fill_price: float) -> int:
+    closed = broker.closed_trade(ticket)
+    if closed is None:
+        return 0  # ancora aperta: si riprova al prossimo ciclo
+    c, pip = rec.candidate, pip_size(rec.candidate.symbol)
+    gross = realized_result(c.direction.value, fill_price, closed.exit_price, c.sl, pip, 0.0)["r_multiple_gross"]
+    if gross is None:
+        raise ValueError(f"fill {fill_price} sullo stop {c.sl}: R non definito")
+    # ponytail: cambio EUR di adesso, non dell'ingresso; scarto < 1% sul valore del pip in un orizzonte di 24 h
+    risk_eur = abs(fill_price - c.sl) / pip * pip_value_eur(c.symbol, market.eur_quote_rate(c.symbol), lots)
+    net = round(gross + (closed.commission_eur + closed.swap_eur) / risk_eur, 3)
+    return int(store.record_broker_outcome(cid, closed, gross, net))
