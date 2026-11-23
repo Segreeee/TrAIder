@@ -47,7 +47,7 @@ La variante 6 (decisore legacy in ombra) resta fuori: entra solo se P5.04 la att
 - Esplorative, per simbolo e per sessione (Asia, Londra, New York): solo descrittive.
 
 ### Revisore giudice (D-012, offline, in ombra)
-Precisione dei veti e lift con IC, richiamo; ablation (ΔEV e ΔBSS appaiati con IC); stabilità su 3 ripetizioni; bias di posizione e di etichetta; kappa tra giudice locale e remoto (se Q-001 è decisa); AUC delle motivazioni; allucinazioni. Promozione a veto in linea solo con: almeno 30 veti su almeno 100 candidati, lift con IC che esclude 1, ΔEV con IC che esclude 0, stabilità ≥ 95%, bias di posizione < 5%. Kappa < 0.4: linea del giudice archiviata.
+Metriche: precisione dei veti e lift con IC, richiamo; ablation (ΔEV e ΔBSS appaiati con IC); stabilità su 3 ripetizioni; bias di posizione e di etichetta; kappa tra giudice locale e remoto (se Q-001 è decisa); AUC delle motivazioni; allucinazioni. Promozione a veto in linea solo con: almeno 30 veti su almeno 100 candidati, lift con IC che esclude 1, ΔEV con IC che esclude 0, stabilità ≥ 95%, bias di posizione < 5%. Kappa < 0.4: linea del giudice archiviata.
 
 ## 5. Inferenza e soglie
 
@@ -67,7 +67,7 @@ Precisione dei veti e lift con IC, richiamo; ablation (ΔEV e ΔBSS appaiati con
 
 ## 7. Nessuna modifica in corsa
 
-Durante la raccolta non cambiano codice di decisione, prompt (versione registrata), modello (`model_digest`), configurazione (`config_hash`) né simboli. Se un cambio è inevitabile (difetto, guasto), si registra la data, si apre una nuova serie e le serie si analizzano separatamente per `config_hash`, versione dei prompt e `model_digest`. Le correzioni che non toccano la decisione (log, dashboard, report) non aprono una nuova serie.
+Regola: nessuna modifica in corsa. Durante la raccolta non cambiano codice di decisione, prompt (versione registrata), modello (`model_digest`), configurazione (`config_hash`) né simboli. Se un cambio è inevitabile (difetto, guasto), si registra la data, si apre una nuova serie e le serie si analizzano separatamente per `config_hash`, versione dei prompt e `model_digest`. Le correzioni che non toccano la decisione (log, dashboard, report) non aprono una nuova serie.
 
 ## 8. Esclusioni (decise ora)
 
