@@ -12,8 +12,8 @@ from tests.fakes import FakeMt5
 NOW = datetime(2026, 3, 2, 12, 7, tzinfo=timezone.utc)
 
 
-def _data(mt5):
-    return Mt5Data(mt5, clock=lambda: NOW)
+def _data(mt5, sleeps=None):
+    return Mt5Data(mt5, clock=lambda: NOW, sleep=(sleeps.append if sleeps is not None else lambda s: None))
 
 
 def test_mt5_data_honours_contract():
@@ -112,6 +112,36 @@ def test_empty_tick_after_select_raises_clearly():
     mt5 = _MarketWatchMt5(NOW, ticks={"EURCHF": (0.0, 0.0)})
     with pytest.raises(RuntimeError, match="tick vuoto per EURCHF"):
         _data(mt5).eur_quote_rate("USDCHF")
+
+
+class _SlowQuoteMt5(_MarketWatchMt5):
+    """Terzo avvio reale: EURJPY appena selezionato ha bid/ask a 0 per qualche istante, poi arriva la quotazione."""
+
+    def __init__(self, *a, empty_reads=2, **kw):
+        super().__init__(*a, **kw)
+        self.empty_reads = empty_reads
+
+    def symbol_info_tick(self, symbol):
+        t = super().symbol_info_tick(symbol)
+        if t is not None and self.empty_reads > 0:
+            self.empty_reads -= 1
+            return t.__class__(bid=0.0, ask=0.0, time=t.time)
+        return t
+
+
+def test_empty_tick_waits_for_first_quote():
+    sleeps = []
+    mt5 = _SlowQuoteMt5(NOW, ticks={"EURJPY": (160.000, 160.020)})
+    assert _data(mt5, sleeps).eur_quote_rate("USDJPY") == pytest.approx(160.010)
+    assert len(sleeps) == 2 and sum(sleeps) <= 1.0  # attesa breve, non un blocco del ciclo
+
+
+def test_empty_tick_gives_up_after_about_one_second():
+    sleeps = []
+    mt5 = _SlowQuoteMt5(NOW, ticks={"EURJPY": (160.000, 160.020)}, empty_reads=1000)
+    with pytest.raises(RuntimeError, match="tick vuoto per EURJPY"):
+        _data(mt5, sleeps).eur_quote_rate("USDJPY")
+    assert 0 < sum(sleeps) <= 1.0
 
 
 def test_tick_unknown_symbol_raises_clearly():
