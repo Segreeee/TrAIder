@@ -77,3 +77,16 @@ def test_consensus_without_agreement_has_no_edge():
     hist = [(r, Outcome("TP", None, None, None, "virtuale", T0)) for r, _ in _history(30, np.random.default_rng(1))]
     est = estimate(VARIANTS["v5-consenso"], CAND, disagree, hist, _cfg())
     assert est.p == pytest.approx(0.4) and est.consensus is False
+
+
+def test_logistic_failure_falls_back_to_beta(monkeypatch, caplog):
+    # review di fine Fase 3 (R2): una logistica non convergente faceva fallire l'intero ciclo, ogni volta
+    import app.variants as variants
+
+    def broken(*a, **k):
+        raise RuntimeError("logistica non convergente: ABNORMAL_TERMINATION_IN_LNSRCH")
+
+    monkeypatch.setattr(variants, "fit_offset_logistic", broken)
+    est = estimate(VARIANTS["v2-tecnica"], CAND, FEATS, _history(600, np.random.default_rng(5)), _cfg())
+    assert est.model == "beta" and 0 < est.p5 < est.p < 1
+    assert "non convergente" in caplog.text and "v2-tecnica" in caplog.text
