@@ -12,9 +12,9 @@ from evaluation.metrics import brier
 DAYS, PER_DAY = 60, 8
 
 
-def _synthetic(mean=0.3, seed=1):
+def _synthetic(mean=0.3, seed=1, day_sd=0.2):
     rng = np.random.default_rng(seed)
-    day_effect = np.repeat(rng.normal(0, 0.2, DAYS), PER_DAY)  # candidati dello stesso giorno correlati
+    day_effect = np.repeat(rng.normal(0, day_sd, DAYS), PER_DAY)  # candidati dello stesso giorno correlati
     values = mean + day_effect + rng.normal(0, 0.5, DAYS * PER_DAY)
     return values, np.repeat(np.arange(DAYS), PER_DAY)
 
@@ -30,11 +30,12 @@ def test_ci_contains_true_mean_synthetic():
 
 
 def test_cluster_ci_wider_than_naive_with_correlated_days():
-    # ricampionare candidati come indipendenti darebbe un intervallo troppo stretto (il motivo della §5)
-    values, days = _synthetic()
+    # ricampionare candidati come indipendenti darebbe un intervallo troppo stretto (il motivo della §5);
+    # correlazione nel giorno 0.5: effetto di disegno 1 + 7·0.5 = 4.5, intervalli ≈ 2.1 volte più larghi
+    values, days = _synthetic(day_sd=0.5)
     _, low, high = cluster_ci(lambda i: values[i].mean(), days)
     _, nlow, nhigh = cluster_ci(lambda i: values[i].mean(), np.arange(len(values)))
-    assert (high - low) > 1.3 * (nhigh - nlow)
+    assert (high - low) > 1.5 * (nhigh - nlow)
 
 
 def test_identical_variants_diff_ci_is_zero():
