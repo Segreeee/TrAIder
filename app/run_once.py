@@ -124,6 +124,9 @@ def run_once(symbol: str, candle_close: datetime, ports: Ports, cfg: Settings, c
         bars = ports.market.closed_bars(symbol, cfg.timeframe, cfg.candles_count)
         htf = ports.market.closed_bars(symbol, cfg.htf_timeframe, HTF_BARS)
         report.inputs.update(bars_m15=_bars(bars), bars_htf=_bars(htf))  # grezze: il replay rigenera il candidato
+        last_close = bars["timestamp"].iloc[-1] + M15 if len(bars) else None
+        if last_close != candle_close:  # MT5 non ha ancora la barra nuova: mai decidere su dati vecchi
+            raise RuntimeError(f"candela {candle_close} non ancora disponibile (ultima barra chiusa: {last_close})")
         m15, trend = add_indicators(closed_by(bars, M15, candle_close)), htf_trend(htf, candle_close)
         news = visible_news(ports.news.latest(symbol, NEWS_LIMIT), candle_close)
         account = ports.broker.account()
