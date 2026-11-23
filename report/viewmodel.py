@@ -6,14 +6,15 @@ La confidenza dichiarata dagli LLM non esiste nell'archivio e non entra qui.
 """
 import sqlite3
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from domain.exposure import currency_exposure
-from evaluation.report import FINAL_MIN_CANDIDATES, FINAL_MIN_DAYS, PRIMARY, analyze, load
+from evaluation.report import FINAL_MIN_CANDIDATES, FINAL_MIN_DAYS, PREREG_START, PRIMARY, analyze, load
 
 _POSITIONS = """SELECT y.symbol, k.direction, e.lots, e.fill_price, k.sl, k.tp FROM executions e
                 JOIN candidates k USING (candidate_id) JOIN cycles y USING (cycle_id)
-                WHERE e.mode = 'sim' AND e.accepted = 1
+                WHERE e.mode = 'sim' AND e.accepted = 1 AND y.candle_close_utc >= ?
                   AND e.candidate_id NOT IN (SELECT candidate_id FROM outcomes) ORDER BY e.candidate_id"""
 
 
@@ -24,13 +25,13 @@ class Archive:
     positions: list[dict]
 
 
-def load_archive(db: Path) -> Archive:
-    """Lettura in sola lettura, come il report."""
-    rows, cycles = load(db)
+def load_archive(db: Path, since: datetime = PREREG_START) -> Archive:
+    """Lettura in sola lettura, come il report, dei soli cicli della preregistrazione (§1)."""
+    rows, cycles = load(db, since=since)
     conn = sqlite3.connect(Path(db).resolve().as_uri() + "?mode=ro", uri=True)
     try:
         conn.row_factory = sqlite3.Row
-        positions = [dict(r) for r in conn.execute(_POSITIONS)]
+        positions = [dict(r) for r in conn.execute(_POSITIONS, (since.isoformat(),))]
     finally:
         conn.close()
     return Archive(rows, cycles, positions)
@@ -63,7 +64,7 @@ def viewmodel(a: Archive, production_variant: str = PRIMARY, last_n: int = 20) -
                      if v},
         "curve": curve,
         "variants": variants,
-        "calibration": analysis["variants"][PRIMARY].get("calibration", []),
+        "calibration": analysis["variants"][production_variant].get("calibration", []),
         "coverage": analysis["coverage"],
         "verdict": analysis["primary"]["verdict"],
         "final": analysis["primary"]["final"],

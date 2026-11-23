@@ -10,7 +10,7 @@ import io
 import sqlite3
 import sys
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -20,6 +20,8 @@ from evaluation.bootstrap import cluster_ci, groups, session_of
 from evaluation.metrics import auc, brier, brier_skill, calibration_deciles, log_loss, max_drawdown
 
 PRIMARY, BASELINE = "v7-completo", "v2-tecnica"
+# §1 della preregistrazione: primo ciclo dopo il commit di approvazione 8d8b8c2 (16:41 UTC)
+PREREG_START = datetime(2026, 11, 23, 16, 45, tzinfo=timezone.utc)
 FINAL_MIN_CANDIDATES, FINAL_MIN_DAYS = 300, 30
 VERDICTS = ("gli LLM aggiungono valore", "gli LLM peggiorano", "non concludente")
 
@@ -42,6 +44,8 @@ def load(db: Path, since: datetime | None = None) -> tuple[list[dict], list[dict
     finally:
         conn.close()
     if since is not None:
+        if since.tzinfo is None:
+            since = since.replace(tzinfo=timezone.utc)  # una data senza fuso vale come UTC
         rows = [r for r in rows if datetime.fromisoformat(r["candle_close_utc"]) >= since]
         cycles = [c for c in cycles if datetime.fromisoformat(c["candle_close_utc"]) >= since]
     return rows, cycles
@@ -122,7 +126,8 @@ def _descriptive(rows: list[dict], key) -> dict:
 
 def analyze(rows: list[dict], cycles: list[dict]) -> dict:
     series = Counter(c["config_hash"] for c in cycles)
-    latest = cycles[-1]["config_hash"] if cycles else None
+    # il ciclo in corso non ha ancora config_hash (lo scrive finish_cycle): la serie è quella dell'ultimo chiuso
+    latest = next((c["config_hash"] for c in reversed(cycles) if c["config_hash"] is not None), None)
     rows = [r for r in rows if r["config_hash"] == latest]
     cycles = [c for c in cycles if c["config_hash"] == latest]
 

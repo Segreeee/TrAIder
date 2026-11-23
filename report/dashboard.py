@@ -9,6 +9,7 @@ from html import escape
 from pathlib import Path
 from string import Template
 
+from evaluation.report import PRIMARY
 from report.viewmodel import load_archive, viewmodel
 
 TEMPLATE = Template((Path(__file__).parent / "template.html").read_text(encoding="utf-8"))
@@ -21,6 +22,11 @@ HOLD = {"GATE_EV": "vantaggio insufficiente", "DAILY_LOSS": "limite di perdita g
         "SAME_SYMBOL": "già aperta sul simbolo", "EXPOSURE": "esposizione per valuta",
         "MAX_POSITIONS": "troppe posizioni aperte", "LOT_BELOW_MIN": "lotto sotto il minimo",
         "LLM_INVALID": "risposta LLM non valida", "NO_CANDIDATE": "nessun candidato"}
+
+
+def _digits(symbol: str) -> int:
+    """Decimali dei prezzi MT5: 3 per le coppie JPY, 5 per le altre (come le quotazioni da copiare)."""
+    return 3 if symbol.upper().endswith("JPY") else 5
 
 
 def _t(iso: str) -> str:
@@ -56,7 +62,7 @@ def _hero(vm: dict, now: datetime) -> str:
             status = f'<p class="muted small">Ultima candela elaborata: {_t(vm["last_cycle"])} UTC.</p>'
     p = vm["progress"]
     return (f"<header><h1>{escape(verdict)}</h1>"
-            f'<p class="muted">Gli analisti LLM ({escape(vm["production_variant"])}) battono la sola analisi '
+            f'<p class="muted">Gli analisti LLM ({PRIMARY}) battono la sola analisi '
             f"tecnica? {note}</p>{status}"
             f'{_meter("Candidati risolti", p["n"], p["n_target"])}'
             f'{_meter("Giorni con dati", p["days"], p["days_target"])}</header>')
@@ -68,7 +74,7 @@ def _signals(vm: dict) -> str:
     rows = []
     for s in vm["signals"]:
         if s["decision"] == "TRADE":
-            d = 3 if s["symbol"].upper().endswith("JPY") else 5
+            d = _digits(s["symbol"])
             reason = (f"ingresso {s['entry']:.{d}f}, stop {s['sl']:.{d}f}, target {s['tp']:.{d}f}, "
                       f"{s['lot'] or 0:.2f} lotti")
         else:
@@ -92,8 +98,9 @@ def _positions(vm: dict) -> str:
         body = '<p class="muted">Nessuna posizione aperta nel broker simulato.</p>'
     else:
         rows = "".join(f"<tr><td>{escape(p['symbol'])}</td><td>{escape(p['direction'])}</td>"
-                       f'<td class="num">{p["lots"]:.2f}</td><td class="num">{p["entry"]:.5g}</td>'
-                       f'<td class="num">{p["sl"]:.5g}</td><td class="num">{p["tp"]:.5g}</td></tr>'
+                       f'<td class="num">{p["lots"]:.2f}</td><td class="num">{p["entry"]:.{_digits(p["symbol"])}f}</td>'
+                       f'<td class="num">{p["sl"]:.{_digits(p["symbol"])}f}</td>'
+                       f'<td class="num">{p["tp"]:.{_digits(p["symbol"])}f}</td></tr>'
                        for p in vm["positions"])
         exposure = ", ".join(f"{escape(c)} {'+' if v > 0 else '−'}{abs(v)}" for c, v in sorted(vm["exposure"].items()))
         body = ('<div class="scroll"><table><thead><tr><th>Simbolo</th><th>Direzione</th><th class="num">Lotti</th>'
