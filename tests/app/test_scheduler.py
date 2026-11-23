@@ -196,3 +196,48 @@ def test_sim_broker_reads_positions_from_the_archive(tmp_path):
     ports = _build(tmp_path)
     assert ports.broker.positions() == ports.store.open_sim_positions() == []
     assert ports.broker._open_positions == ports.store.open_sim_positions
+
+
+class _FakeMt5Module:
+    def __init__(self):
+        self.shut = False
+
+    def initialize(self, **kw):
+        return True
+
+    def last_error(self):
+        return (0, "ok")
+
+    def shutdown(self):
+        self.shut = True
+
+
+def _main_with(monkeypatch, fake_mt5, **patches):
+    import sys
+    import main
+    monkeypatch.setitem(sys.modules, "MetaTrader5", fake_mt5)  # mai il modulo vero nei test
+    monkeypatch.setattr(main, "setup_logging", lambda: None)
+    for name, value in patches.items():
+        monkeypatch.setattr(main, name, value)
+    return main.main(["--once"])
+
+
+def test_main_logs_composition_failure_and_exits_1(monkeypatch, caplog):
+    # review di fine Fase 3 (R9): Ollama giù o modello mancante uscivano come traceback grezzo, fuori dal log
+    fake = _FakeMt5Module()
+
+    def broken(cfg, mt5):
+        raise RuntimeError("modello non trovato: esegui ollama pull gemma3:12b")
+
+    assert _main_with(monkeypatch, fake, build_ports=broken) == 1
+    assert "ollama pull" in caplog.text and fake.shut
+
+
+def test_main_closes_the_archive(monkeypatch):
+    from types import SimpleNamespace
+    closed = []
+    store = SimpleNamespace(close=lambda: closed.append(True))
+    ports = SimpleNamespace(store=store, broker=SimpleNamespace())
+    assert _main_with(monkeypatch, _FakeMt5Module(), build_ports=lambda cfg, mt5: ports,
+                      make_cycle=lambda cfg, p, v: (lambda close: None), code_version=lambda: "x") == 0
+    assert closed == [True]
