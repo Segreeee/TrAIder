@@ -179,3 +179,11 @@ def test_cycle_resolves_with_configured_horizon(monkeypatch):
     compose.make_cycle(cfg, ports=SimpleNamespace(store=None, market=None, broker=None), code_version="x",
                        clock=lambda: T0)(T0)
     assert seen == [48]
+
+
+def test_live_news_provider_is_cached():
+    # R3 / D-015: senza cache le notizie live non superano mai la regola anti-futuro
+    from app.compose import _news
+    from adapters.news_cache import CachedNews
+    cfg = Settings(_env_file=None, news_provider="finnhub", finnhub_api_key="k")
+    assert isinstance(_news(cfg), CachedNews)
