@@ -10,3 +10,9 @@ logs/*.csv
 .coverage
 .pytest_cache/
 data/
+
+# Archify: cartelle di lavoro e ricevute (contengono percorsi locali assoluti)
+.archify/
+docs/*.browser-check.json
+docs/*.delivery.json
+docs/*.finalize*.json
