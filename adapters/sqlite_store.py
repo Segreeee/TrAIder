@@ -88,6 +88,7 @@ class SqliteStore:
             (cycle_id, record.variant, c.direction.value, c.entry, c.sl, c.tp, c.d_sl, c.d_tp, record.cost_pips,
              record.p, record.p_star, record.ev, record.ev5, record.decision, record.hold_reason,
              record.p0, record.p5, record.lot, _gate_passed(record.hold_reason), json.dumps(record.features)))
+        assert cur.lastrowid is not None  # sempre valorizzato dopo un INSERT riuscito
         return cur.lastrowid
 
     def record_execution(self, candidate_id: int, fill: Fill, lots: float,

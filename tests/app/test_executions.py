@@ -27,7 +27,7 @@ def test_sim_execution_records_spread():
     report = run_once("EURUSD", CLOSE, ports, Settings(_env_file=None, commission_eur_per_lot=7.0))
     assert report.decision == "TRADE"
     cur = store.conn.execute("SELECT * FROM executions")
-    (ex,) = [dict(zip([d[0] for d in cur.description], r)) for r in cur.fetchall()]
+    (ex,) = [dict(zip([d[0] for d in cur.description], r, strict=True)) for r in cur.fetchall()]
     assert ex["mode"] == "sim" and ex["accepted"] == 1
     assert ex["spread"] == pytest.approx(0.00008)
     assert ex["commission"] == pytest.approx(-3.5 * ex["lots"])  # metà del giro, pagata all'ingresso

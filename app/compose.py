@@ -28,7 +28,7 @@ log = logging.getLogger(__name__)
 
 def mt5_init_kwargs(cfg: Settings) -> dict:
     """Argomenti per mt5.initialize dal .env; vuoto senza credenziali (si usa il login del terminale)."""
-    kwargs = {}
+    kwargs: dict[str, object] = {}
     if cfg.mt5_path:
         kwargs["path"] = cfg.mt5_path
     if cfg.mt5_login:
@@ -53,6 +53,7 @@ def _news(cfg: Settings):
     # D-015: le fonti live passano dalla cache, altrimenti la regola anti-futuro scarta ogni notizia
     cache = Path(cfg.db_path).parent / "news_cache.json"
     if cfg.news_provider == "finnhub":
+        assert cfg.finnhub_api_key is not None  # garantito dal validatore di Settings
         return CachedNews(FinnhubNews(cfg.finnhub_api_key), cache)
     if cfg.news_provider == "mock":
         return CachedNews(StaticNews(), cache)

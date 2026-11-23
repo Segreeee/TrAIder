@@ -35,7 +35,7 @@ def first_hit(action: str, tp: float, sl: float, future_df: pd.DataFrame,
     massimo e minimo + `spread` (in prezzo: scalare o una serie per barra) (T-010)."""
     n = len(future_df)
     spreads = [float(spread)] * n if pd.api.types.is_scalar(spread) else [float(s) for s in spread]
-    for i, (high, low, s) in enumerate(zip(future_df["high"], future_df["low"], spreads)):
+    for i, (high, low, s) in enumerate(zip(future_df["high"], future_df["low"], spreads, strict=True)):
         if action == "BUY":
             hit_sl, hit_tp = low <= sl, high >= tp
         else:  # SELL: l'uscita avviene all'ask

@@ -1,6 +1,6 @@
 """P3.15: adattatore dati MT5 con il modulo mt5 iniettato. Solo candele chiuse, orari in UTC
 ricalcolando l'offset del server a ogni chiamata, colonna spread conservata."""
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import pytest
 

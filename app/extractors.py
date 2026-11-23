@@ -4,7 +4,7 @@ Schema chiuso: niente campo di confidenza, niente chiavi in più. La caratterist
 nel modello di probabilità è x = dir_llm · dir_candidato · forza, in [−3, 3]:
 positiva se l'analista concorda con il candidato, negativa se lo contraddice.
 """
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal, Optional, cast
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
@@ -31,4 +31,4 @@ def feature_from_result(result: LlmResult, direction: Direction) -> tuple[Option
     lo zero direbbe "analista neutrale", che è un'altra informazione."""
     if not result.schema_valid or result.parsed is None:
         return None, True
-    return signed_feature(result.parsed, direction), False
+    return signed_feature(cast(AnalystView, result.parsed), direction), False  # schema passato: AnalystView

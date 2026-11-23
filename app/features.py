@@ -25,7 +25,7 @@ def add_indicators(
     out["macd"], out["macd_hist"], out["macd_signal"] = cols(
         ta.macd(out["close"], fast=macd_fast, slow=macd_slow, signal=macd_signal), 3)
     out["atr"], = cols(ta.atr(out["high"], out["low"], out["close"], length=atr_length), 1)
-    out["bb_lower"], out["bb_mid"], out["bb_upper"] = cols(ta.bbands(out["close"], length=bb_length, std=bb_std), 3)
+    out["bb_lower"], out["bb_mid"], out["bb_upper"] = cols(ta.bbands(out["close"], length=bb_length, std=bb_std), 3)  # type: ignore[arg-type]  # stub di pandas_ta errato: std è un numero
     return out
 
 

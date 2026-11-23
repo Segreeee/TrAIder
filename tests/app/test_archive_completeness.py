@@ -139,7 +139,7 @@ def _run(trend_up, edge, tech_ok, macro_ok, news, equity, positions, losing):
 def _rows(store, sql, cycle):
     cur = store.conn.execute(sql, (cycle,))
     names = [d[0] for d in cur.description]
-    return [dict(zip(names, r)) for r in cur.fetchall()]
+    return [dict(zip(names, r, strict=True)) for r in cur.fetchall()]
 
 
 @hsettings(max_examples=40, deadline=None)

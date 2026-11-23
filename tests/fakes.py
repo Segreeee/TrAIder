@@ -39,7 +39,7 @@ class FakeMt5:
         close = 1.10 + np.cumsum(rng.normal(0, 0.0005, count))
         dtype = [("time", "i8"), ("open", "f8"), ("high", "f8"), ("low", "f8"),
                  ("close", "f8"), ("tick_volume", "i8"), ("spread", "i4"), ("real_volume", "i8")]
-        rows = [(int(t), c, c + 0.0004, c - 0.0004, c, 100, 7, 0) for t, c in zip(opens, close)]
+        rows = [(int(t), c, c + 0.0004, c - 0.0004, c, 100, 7, 0) for t, c in zip(opens, close, strict=True)]
         return np.array(rows, dtype=dtype)
 
     def symbol_info_tick(self, symbol):

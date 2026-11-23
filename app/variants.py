@@ -61,7 +61,7 @@ def _agree(features: dict) -> bool:
 
 
 def _x(features: dict, keys: tuple[str, ...]) -> list[float]:
-    return [features.get(k) if features.get(k) is not None else 0.0 for k in keys]
+    return [v if (v := features.get(k)) is not None else 0.0 for k in keys]
 
 
 def _logistic(variant: Variant, x_now: list[float], off_now: float, decided: list, cfg: Settings) -> Optional[Estimate]:

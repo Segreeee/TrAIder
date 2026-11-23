@@ -1,0 +1,10 @@
+# Analisi statica (R11): regole sui difetti, non sullo stile.
+line-length = 120
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "B"]
+ignore = ["E501"]  # righe lunghe: stile, non difetti
+
+[lint.per-file-ignores]
+"tests/**" = ["E741"]  # l = perdita in R nei test delle formule (W, L, p*)

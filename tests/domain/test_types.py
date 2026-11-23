@@ -5,7 +5,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from domain.types import Candidate, Direction, HoldReason, levels_consistent
+from domain.types import Candidate, Direction, HoldReason
 
 CLOSE = datetime(2026, 11, 23, 10, 0, tzinfo=timezone.utc)
 
