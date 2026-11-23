@@ -36,3 +36,12 @@ def _no_real_configuration(monkeypatch):
         monkeypatch.delenv(name.upper(), raising=False)
     # anche il file .env reale: un test che lo vuole deve passare _env_file esplicitamente
     monkeypatch.setitem(Settings.model_config, "env_file", None)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_dashboard_write(monkeypatch):
+    """Un ciclo di make_cycle nei test non scrive mai la dashboard nel percorso di default (data/dashboard.html,
+    accanto all'archivio reale): review di P7.01. I test che la vogliono la sostituiscono di nuovo o chiamano
+    report.dashboard.write_dashboard con percorsi in tmp_path."""
+    import app.compose
+    monkeypatch.setattr(app.compose, "write_dashboard", lambda *a, **k: None)
