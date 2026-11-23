@@ -81,3 +81,21 @@ def test_reconciliation_gap_in_r():
 
 def test_small_gap_is_within_threshold():
     assert reconciliation_gap(1.45, 1.40) == (pytest.approx(-0.05), False)
+
+
+def test_one_bad_trade_does_not_block_reconciliation(caplog):
+    # review di fine Fase 3 (R8): un trade con dati anomali bloccava la riconciliazione di tutti gli altri
+    store = SqliteStore(":memory:")
+    cycle = store.begin_cycle("EURUSD", CLOSE)
+    cand = Candidate("EURUSD", Direction.BUY, 1.1000, 1.0980, 1.1030, CLOSE)
+    ids = []
+    for variant, ticket, fill_price in (("v1-p0", 7, 1.0980), ("v7-completo", 8, 1.1001)):  # il primo: fill sullo stop
+        cid = store.record_candidate(cycle, CandidateRecord(variant, cand, 0.2, 0.45, 0.42, 0.1, 0.05, "TRADE", None,
+                                                            p0=0.4, p5=0.41, lot=0.1, features={}))
+        store.record_execution(cid, Fill("mt5", True, fill_price, 0.00008, ticket), lots=0.1, slippage_pips=0.0)
+        ids.append(cid)
+    closed = ClosedTrade(exit_price=1.1030, profit_eur=26.36, commission_eur=-0.70, swap_eur=0.0)
+    broker = _ClosedBroker({7: closed, 8: closed})
+    assert reconcile_broker(store, broker, SimpleNamespace(eur_quote_rate=lambda s: 1.10)) == 1
+    assert [cid for cid, *_ in store.open_broker_trades()] == [ids[0]]  # resta in attesa, non perso
+    assert "riconciliazione" in caplog.text
