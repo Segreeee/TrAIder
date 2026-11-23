@@ -22,7 +22,9 @@ Indicatori sull'ultima candela: RSI14 {rsi:.1f}, EMA20 {ema:.{d}f}, MACD istogra
 Bollinger {bb_lower:.{d}f} / {bb_mid:.{d}f} / {bb_upper:.{d}f}."""
 
 MACRO_SYSTEM = ("Sei un analista macroeconomico del mercato forex. Valuti solo le notizie fornite, "
-                "senza dati di prezzo.\n" + _SCHEMA)
+                "senza dati di prezzo.\n" + _SCHEMA +
+                "\nOgni motivazione è UNA sola frase di al massimo 30 parole (meno di 200 caratteri): "
+                "cita il fatto decisivo, non riassumere tutte le notizie.")
 MACRO_USER = """Coppia: {symbol}. Notizie disponibili (pubblicazione UTC, fonte, titolo):
 {news}"""
 
