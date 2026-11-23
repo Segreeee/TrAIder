@@ -111,7 +111,22 @@ def check_broker_outcome_beside_virtual(make_store):
     assert store.reconciliations() == [(real, _outcome().r_net, -1.05)]
 
 
+def check_open_sim_positions(make_store):
+    # R4 / D-016: eseguiti in simulazione e non ancora risolti; rifiutati ed esecuzioni MT5 esclusi
+    store = make_store()
+    cycle = store.begin_cycle("EURUSD", CLOSE)
+    sim, refused, real = (store.record_candidate(cycle, _record(v)) for v in ("v1", "v2", "v3"))
+    store.record_execution(sim, Fill("sim", True, 1.10008, 0.00008, 1), lots=0.1)
+    store.record_execution(refused, Fill("sim", False, 0.0, 0.00008, None, "lotto"), lots=0.1)
+    store.record_execution(real, Fill("mt5", True, 1.10008, 0.00008, 9), lots=0.1)
+    (pos,) = store.open_sim_positions()
+    assert (pos.symbol, pos.direction, pos.lots, pos.entry, pos.sl, pos.tp) == (
+        "EURUSD", Direction.BUY, 0.1, 1.10008, 1.0980, 1.1030)
+    store.record_outcome(sim, _outcome())
+    assert store.open_sim_positions() == []
+
+
 ALL = [check_finish_cycle_once, check_resolved_history_per_variant, check_begin_cycle_idempotent,
        check_candidate_unique_per_variant, check_outcome_recorded_once, check_pending_excludes_resolved,
        check_llm_call_and_execution_are_kept, check_pending_roundtrip_keeps_the_record,
-       check_broker_outcome_beside_virtual]
+       check_broker_outcome_beside_virtual, check_open_sim_positions]
