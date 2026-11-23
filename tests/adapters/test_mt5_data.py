@@ -106,6 +106,14 @@ def test_conversion_symbol_selected_before_tick():
     assert _data(mt5).eur_quote_rate("USDCAD") == pytest.approx(1.50010)
 
 
+def test_empty_tick_after_select_raises_clearly():
+    # Secondo avvio reale: EURCHF appena selezionato aveva bid/ask a 0 (nessuna quotazione ancora arrivata);
+    # il tick passava e l'errore usciva nel dominio come "eur_quote_rate deve essere positivo".
+    mt5 = _MarketWatchMt5(NOW, ticks={"EURCHF": (0.0, 0.0)})
+    with pytest.raises(RuntimeError, match="tick vuoto per EURCHF"):
+        _data(mt5).eur_quote_rate("USDCHF")
+
+
 def test_tick_unknown_symbol_raises_clearly():
     with pytest.raises(RuntimeError, match="simbolo non disponibile: EURXYZ"):
         _data(_MarketWatchMt5(NOW)).tick("EURXYZ")
