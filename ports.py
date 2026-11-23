@@ -62,6 +62,7 @@ class LlmResult:
     attempts: int
     schema_valid: bool
     error: str = ""
+    prompt: str = ""            # system + user esattamente come inviati: va in llm_calls.prompt_text
 
 
 def call_validated(
@@ -71,6 +72,7 @@ def call_validated(
     al massimo max_retries + 1 tentativi. Non solleva: un fallimento torna con schema_valid=False
     e l'errore, così il ciclo lo archivia (HoldReason.LLM_INVALID) invece di interrompersi."""
     raw, error, tokens_in, tokens_out = "", "", 0, 0
+    prompt = f"{system}\n\n{user}"
     start = time.perf_counter()
     for attempt in range(1, max_retries + 2):
         try:
@@ -85,9 +87,10 @@ def call_validated(
             error = f"schema: {exc.errors()[0]['msg']}"
             continue
         return LlmResult(parsed, raw, llm.model, llm.model_digest, prompt_version,
-                         (time.perf_counter() - start) * 1000, tokens_in, tokens_out, attempt, True)
+                         (time.perf_counter() - start) * 1000, tokens_in, tokens_out, attempt, True, prompt=prompt)
     return LlmResult(None, raw, llm.model, llm.model_digest, prompt_version,
-                     (time.perf_counter() - start) * 1000, tokens_in, tokens_out, max_retries + 1, False, error)
+                     (time.perf_counter() - start) * 1000, tokens_in, tokens_out, max_retries + 1, False, error,
+                     prompt)
 
 
 # --- Broker ------------------------------------------------------------------ #

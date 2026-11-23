@@ -69,12 +69,12 @@ class SqliteStore:
     def record_llm_call(self, cycle_id: int, role: str, result: LlmResult) -> None:
         parsed = result.parsed.model_dump_json() if result.parsed is not None else None
         self._insert(
-            "INSERT INTO llm_calls (cycle_id, role, model, model_digest, prompt_version, temperature, response_raw,"
-            " parsed_json, schema_valid, attempts, latency_ms, tokens_in, tokens_out, error)"
-            " VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (cycle_id, role, result.model, result.model_digest, result.prompt_version, result.raw, parsed,
-             int(result.schema_valid), result.attempts, result.latency_ms, result.tokens_in, result.tokens_out,
-             result.error or None))
+            "INSERT INTO llm_calls (cycle_id, role, model, model_digest, prompt_version, prompt_text, temperature,"
+            " response_raw, parsed_json, schema_valid, attempts, latency_ms, tokens_in, tokens_out, error)"
+            " VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (cycle_id, role, result.model, result.model_digest, result.prompt_version, result.prompt or None,
+             result.raw, parsed, int(result.schema_valid), result.attempts, result.latency_ms, result.tokens_in,
+             result.tokens_out, result.error or None))
 
     def record_candidate(self, cycle_id: int, record: CandidateRecord) -> int:
         c = record.candidate
