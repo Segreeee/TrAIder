@@ -125,3 +125,13 @@ def test_main_prints_on_cp1252_console(tmp_path, monkeypatch):
     assert main(["--db", str(db)]) == 0
     sys.stdout.flush()
     assert "ΔBSS".encode() in raw.getvalue()
+
+
+def test_report_from_date_excludes_earlier_cycles(tmp_path):
+    # §1: si analizzano solo i cicli dopo il commit di approvazione; prima ci sono le prove di avvio
+    db = tmp_path / "a.db"
+    _archive(db, days=10)
+    r = analyze(*load(db, since=T0 + timedelta(days=4)))
+    assert r["variants"]["v7-completo"]["n"] == 6 * 5
+    assert r["coverage"]["cycles_error"] == 0  # il ciclo in errore è precedente
+    assert main(["--db", str(db), "--dal", "2026-12-05T00:00:00+00:00"]) == 0
