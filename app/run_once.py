@@ -153,10 +153,23 @@ def run_once(symbol: str, candle_close: datetime, ports: Ports, cfg: Settings, c
     except Exception as exc:  # il ciclo si chiude come errore in archivio; il demone passa al simbolo successivo
         log.exception("ciclo %s %s fallito", symbol, candle_close)
         report.status, report.error = "error", f"{type(exc).__name__}: {exc}"
-    snapshot = json.dumps(report.inputs, sort_keys=True, default=float)
+    except BaseException as exc:  # Ctrl+C, SystemExit: si chiude il ciclo, poi ci si ferma davvero
+        report.status, report.error = "error", f"interrotto: {type(exc).__name__}"
+        _close(symbol, cycle, report, ports, cfg, code_version)
+        raise
+    _close(symbol, cycle, report, ports, cfg, code_version)
+    return report
+
+
+def _close(symbol: str, cycle: int, report: CycleReport, ports: Ports, cfg: Settings, code_version: str) -> None:
+    """Chiude il ciclo in archivio una sola volta: un ciclo lasciato 'running' bloccherebbe la candela per sempre."""
+    try:
+        snapshot = json.dumps(report.inputs, sort_keys=True, default=float)
+    except (TypeError, ValueError) as exc:  # input non serializzabile: il ciclo si chiude lo stesso
+        snapshot, report.status = None, "error"
+        report.error = f"{report.error or ''} input_json non serializzabile: {exc}".strip()
     ports.store.finish_cycle(cycle, report.status, report.error, snapshot, code_version, cfg.config_hash())
     _log_summary(symbol, report)
-    return report
 
 
 def _log_summary(symbol: str, r: CycleReport) -> None:
