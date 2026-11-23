@@ -72,6 +72,20 @@ Le analisi complete con le matrici stanno in `docs/ALTERNATIVE.md`.
 - **Conseguenze:** metriche preregistrate (precisione dei veti, ablation, stabilità, bias di posizione e di etichetta, kappa, AUC delle motivazioni).
 - **Cosa farebbe cambiare idea:** promozione a veto in linea con ≥30 vetati / ≥100 candidati, lift con intervallo che esclude 1, ΔEV con intervallo che esclude 0, stabilità ≥ 95%, bias di posizione < 5%. Kappa < 0.4 → linea giudice archiviata.
 
+### D-013 — Replay dal solo input_json: candele grezze, stime come input  ·  Stato: Accettata  ·  2026-11-23
+- **Contesto:** P3.32 chiede che ogni ciclo archiviato si possa rieseguire con lo stesso risultato.
+- **Alternative:** ultime 20 barre con indicatori (stato precedente, non basta a rigenerare il candidato) / **candele grezze M15 e H1 + stime p/p5 per variante come input** / ricalcolo delle stime dallo storico (impossibile: lo storico risolto cresce dopo il ciclo).
+- **Decisione e motivo:** si salvano candele grezze, notizie, conto, cambio EUR, valore del pip, costo, stime per variante e configurazione senza segreti né credenziali MT5; gli indicatori si ricalcolano. `app/replay.py` rigenera candidato e decisioni.
+- **Conseguenze:** circa 25 KB per ciclo; il replay verifica generatore e decisione, non lo stimatore.
+- **Cosa farebbe cambiare idea:** archivio troppo grande (si comprime il JSON) o bisogno di rieseguire anche la stima (si salva l'istantanea dello storico usato).
+
+### D-014 — Esiti del broker in una tabella separata, costi con i segni di MT5  ·  Stato: Accettata  ·  2026-11-23
+- **Contesto:** P3.34 vuole l'esito del broker accanto a quello virtuale, ma `outcomes` ha `candidate_id` come chiave primaria.
+- **Alternative:** migrare `outcomes` a chiave (candidate_id, resolved_by) / **tabella `broker_outcomes`** / colonne in più in `executions` (vietato: sola aggiunta).
+- **Decisione e motivo:** tabella nuova, creata da `CREATE TABLE IF NOT EXISTS` anche sull'archivio esistente, senza migrazioni. Commissione e swap con il segno di MT5 (negativo = pagato), così si sommano al profitto come in `account()`. Lo swap si registra alla chiusura (in `broker_outcomes`), perché all'ingresso vale sempre 0. Il broker simulato registra all'ingresso metà della commissione configurata, come il deal di ingresso MT5.
+- **Conseguenze:** `outcomes.resolved_by = 'broker'` resta ammesso dallo schema ma non usato. L'ora di chiusura è quella di rilevazione; il cambio EUR è quello della riconciliazione.
+- **Cosa farebbe cambiare idea:** scarti sistematici vicini alla soglia di 0.1 R dovuti a questi due limiti → ora del deal convertita con l'offset del server e cambio salvato all'ingresso.
+
 ## Domande aperte
 - Q-001 — Fornitore del giudice remoto (campione 20%, D-012): lo sceglie l'utente. Fino ad allora solo giudice locale. Non blocca la Fase 2: la porta LLM è indipendente dal fornitore.
 - Q-005 — Soglia di attivazione del modello logistico (2026-11-22, P3.26). La regola della specifica "Brier skill score > 0 fuori campione" si attiva **per caso**: con caratteristiche senza informazione (600 esiti, split 70/30) il BSS esce positivo in 4 semi su 10 (0.0002, 0.0015, 0.0044, 0.0096). Il gate su EV_5 resta una seconda protezione (il p5 da bootstrap è prudente), ma la regola da sola non distingue segnale da rumore. Proposte: (a) estremo inferiore di un intervallo bootstrap al 90% del BSS > 0; (b) soglia fissa, es. BSS ≥ 0.01; (c) test di rapporto di verosimiglianza contro β = 0 con p < 0.05. Raccomandazione: (a), coerente con l'uso di p5 nel gate. Il test `test_uninformative_features_keep_beta` è segnato xfail strict finché non si decide. **Chiusa il 2026-11-22: l'utente sceglie (a).**
