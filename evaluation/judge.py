@@ -40,6 +40,7 @@ class JudgeCase:
     htf_trend: str
     indicators: dict[str, float] = field(default_factory=dict)
     opinions: list[list[str]] = field(default_factory=list)   # motivazioni di ogni analista
+    roles: list[str] = field(default_factory=list)             # ruolo di ogni parere: solo per la prova del bias
     news: list[str] = field(default_factory=list)              # titoli visibili alla chiusura
 
 
@@ -53,11 +54,16 @@ SYSTEM = (
 )
 
 
-def build_judge_prompt(case: JudgeCase, seed: int) -> tuple[str, str]:
-    opinions = list(case.opinions)
-    random.Random(seed).shuffle(opinions)  # ordine casuale ma riproducibile: il seme va in archivio
-    pareri = "\n".join(f"Parere {i}:\n" + "\n".join(f"- {r}" for r in reasons)
-                       for i, reasons in enumerate(opinions, start=1)) or "Nessun parere."
+def build_judge_prompt(case: JudgeCase, seed: int, reverse: bool = False, labeled: bool = False) -> tuple[str, str]:
+    """reverse: ordine dei pareri invertito (bias di posizione); labeled: ruoli nominati (bias di etichetta)."""
+    roles = case.roles or [""] * len(case.opinions)
+    pairs = list(zip(roles, case.opinions, strict=True))
+    random.Random(seed).shuffle(pairs)  # ordine casuale ma riproducibile dal seme
+    if reverse:
+        pairs.reverse()
+    pareri = "\n".join((f"Parere dell'analista {role}:" if labeled and role else f"Parere {i}:") + "\n"
+                       + "\n".join(f"- {r}" for r in reasons)
+                       for i, (role, reasons) in enumerate(pairs, start=1)) or "Nessun parere."
     indicators = ", ".join(f"{k} {v:.2f}" for k, v in case.indicators.items()) or "non disponibili"
     news = "\n".join(f"- {h}" for h in case.news) or "Nessuna notizia."
     user = (f"Candidato: {case.direction} {case.symbol}, stop a {case.d_sl_pips:.1f} pip, "

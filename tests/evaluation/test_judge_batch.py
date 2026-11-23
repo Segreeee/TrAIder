@@ -16,8 +16,12 @@ def _cfg(pct=100):
     return Settings(_env_file=None, remote_judge_sample_pct=pct)
 
 
+VIEW_MACRO = '{"direzione": 1, "forza": 1, "orizzonte": "giorni", "motivazioni": ["BCE accomodante"]}'
+
+
 def _archived_cycle():
-    ports = _ports(news_items=[NEWS])
+    # motivazioni diverse per tecnico e macro: altrimenti invertire l'ordine non cambierebbe il testo
+    ports = _ports(news_items=[NEWS], macro=FakeLlm([VIEW_MACRO] * 5))
     run_once("EURUSD", CLOSE, ports, _cfg())
     return ports.store
 

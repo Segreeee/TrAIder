@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from domain.types import Candidate, Direction
-from ports import CandidateRecord, ClosedTrade, Fill, LlmResult, Outcome, Position
+from ports import CandidateRecord, ClosedTrade, Fill, JudgeInput, LlmResult, Outcome, Position
 
 SCHEMA = Path(__file__).with_name("schema.sql")
 
@@ -98,6 +98,25 @@ class SqliteStore:
             " commission, reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (candidate_id, fill.mode, int(fill.accepted), fill.ticket, lots, fill.fill_price, fill.spread,
              slippage_pips, fill.commission, fill.reason or None))
+
+    def judge_queue(self, variant: str) -> list[JudgeInput]:
+        rows = self.conn.execute(
+            f"SELECT {self._RECORD_COLUMNS}, y.input_json, k.cycle_id FROM candidates k JOIN cycles y USING (cycle_id)"
+            " WHERE k.variant = ? AND k.veto_shadow IS NULL AND y.status = 'done' ORDER BY k.cycle_id",
+            (variant,)).fetchall()
+        out = []
+        for r in rows:
+            views = {role: json.loads(parsed)["motivazioni"] for role, parsed in self.conn.execute(
+                "SELECT role, parsed_json FROM llm_calls WHERE cycle_id = ? AND schema_valid = 1"
+                " AND role IN ('tecnico', 'macro') ORDER BY call_id", (r[-1],))}
+            out.append(JudgeInput(r[-1], self._to_record(r), r[-2], views))
+        return out
+
+    def set_veto_shadow(self, cycle_id: int, veto: bool) -> None:
+        cur = self._insert("UPDATE candidates SET veto_shadow = ? WHERE cycle_id = ?",
+                           ("veto" if veto else "ok", cycle_id))
+        if cur.rowcount == 0:
+            raise ValueError(f"archivio: nessun candidato nel ciclo {cycle_id}")
 
     def open_sim_positions(self) -> list[Position]:
         rows = self.conn.execute(

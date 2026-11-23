@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 
-from ports import CandidateRecord, LlmResponse, NewsItem, Outcome, Position
+from ports import CandidateRecord, JudgeInput, LlmResponse, NewsItem, Outcome, Position
 
 
 class FakeMt5:
@@ -149,6 +149,7 @@ class FakeStore:
         self.candidates: dict[int, tuple[int, CandidateRecord]] = {}
         self.executions: list[tuple] = []
         self.broker_outcomes: dict[int, tuple] = {}
+        self.veto_shadow: dict[int, bool] = {}
         self.outcomes: dict[int, Outcome] = {}
         self.finished: dict[int, dict] = {}
 
@@ -183,6 +184,21 @@ class FakeStore:
 
     def close(self) -> None:
         pass
+
+    def judge_queue(self, variant):
+        out = []
+        for cycle, rec in self.candidates.values():
+            done = self.finished.get(cycle, {}).get("status") == "done"
+            if rec.variant == variant and done and cycle not in self.veto_shadow:
+                views = {role: list(res.parsed.motivazioni) for c, role, res in self.llm_calls
+                         if c == cycle and role in ("tecnico", "macro") and res.schema_valid}
+                out.append(JudgeInput(cycle, rec, self.finished[cycle]["input_json"], views))
+        return out
+
+    def set_veto_shadow(self, cycle_id, veto):
+        if cycle_id in self.veto_shadow:
+            raise ValueError(f"veto_shadow del ciclo {cycle_id} già scritto")
+        self.veto_shadow[cycle_id] = veto
 
     def open_sim_positions(self):
         out = []

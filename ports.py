@@ -183,6 +183,15 @@ class CandidateRecord:
 
 
 @dataclass(frozen=True)
+class JudgeInput:
+    """Ciò che il giudice offline legge di un ciclo (P5.08): candidato, input completo, motivazioni valide per ruolo."""
+    cycle_id: int
+    record: CandidateRecord
+    input_json: str
+    views: dict[str, list[str]]
+
+
+@dataclass(frozen=True)
 class Outcome:
     result: str                 # "TP" | "SL" | "TIMEOUT"
     exit_price: Optional[float]
@@ -216,6 +225,14 @@ class SignalStore(Protocol):
         ...
 
     def close(self) -> None: ...
+
+    def judge_queue(self, variant: str) -> list[JudgeInput]:
+        """Cicli chiusi con un candidato di `variant` ancora senza veto_shadow, in ordine."""
+        ...
+
+    def set_veto_shadow(self, cycle_id: int, veto: bool) -> None:
+        """Veto in ombra su tutti i candidati del ciclo, una sola volta (ValueError se già scritto)."""
+        ...
 
     def open_sim_positions(self) -> list[Position]:
         """Posizioni del broker simulato: esecuzioni 'sim' accettate senza esito virtuale (D-016)."""
