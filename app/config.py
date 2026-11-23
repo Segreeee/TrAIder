@@ -100,6 +100,10 @@ class Settings(BaseSettings):
             raise ValueError("giudice remoto: servono REMOTE_JUDGE_BASE_URL, REMOTE_JUDGE_MODEL e REMOTE_JUDGE_API_KEY")
         return self
 
+    def public_config(self) -> dict:
+        """Configurazione archiviabile in ogni ciclo: senza segreti né credenziali del conto MT5."""
+        return self.model_dump(mode="json", exclude=SECRET_FIELDS | {"mt5_login", "mt5_server", "mt5_path"})
+
     def config_hash(self) -> str:
         """Impronta della configurazione senza segreti: va in ogni ciclo archiviato."""
         data = self.model_dump(mode="json", exclude=SECRET_FIELDS)

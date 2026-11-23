@@ -6,7 +6,7 @@ va al broker → finish_cycle con l'input completo.
 """
 import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Optional
 
@@ -29,7 +29,7 @@ from ports import (AccountState, Broker, CandidateRecord, Llm, MarketData, NewsF
                    build_broker, call_validated)
 
 log = logging.getLogger(__name__)
-HTF_BARS, NEWS_LIMIT, SNAPSHOT_BARS = 120, 10, 20
+HTF_BARS, NEWS_LIMIT = 120, 10
 
 
 @dataclass
@@ -56,6 +56,7 @@ class CycleReport:
     decision: Optional[str] = None       # della variante di produzione
     hold_reason: Optional[str] = None
     error: Optional[str] = None
+    inputs: dict = field(default_factory=dict)   # tutto ciò che serve a app/replay.py, va in cycles.input_json
 
 
 def _ask(llm: Llm, role: str, prompt: tuple[str, str], version: str, cycle: int, cand: Candidate,
@@ -71,18 +72,22 @@ def _ask(llm: Llm, role: str, prompt: tuple[str, str], version: str, cycle: int,
 def _decide_all(symbol: str, cycle: int, cand: Candidate, last_bar: pd.Series, account: AccountState,
                 called: set, ports: Ports, cfg: Settings, report: CycleReport) -> None:
     pip = pip_size(symbol)
-    pip_value = pip_value_eur(symbol, ports.market.eur_quote_rate(symbol))
+    rate = ports.market.eur_quote_rate(symbol)
+    pip_value = pip_value_eur(symbol, rate)
     # T-010: le distanze partono già dal prezzo di esecuzione (ask per i BUY; i SELL escono all'ask),
     # quindi lo spread non entra nel costo: c = commissione + slippage.
     # ponytail: commissione assente (ammessa solo in simulazione) vale 0 e sottostima il costo; va impostata nel .env
     cost = cost_pips(0.0, pip / 10, pip, cfg.commission_eur_per_lot or 0.0, pip_value, cfg.slippage_pips)
     ctx = Context(account.equity, account.open_positions, account.day_pnl, cost, pip_value, cfg)
+    report.inputs.update(eur_quote_rate=rate, pip_value_eur=pip_value, cost_pips=cost, features=dict(report.features),
+                         variants={})
     for variant in VARIANTS.values():
         if not available(variant, report.features, called):
             continue  # es. varianti macro senza notizie: non disponibili, non simulate
         est = estimate(variant, cand, report.features, ports.store.resolved(variant.name), cfg)
         invalid = any(role in report.llm_invalid for role in variant.features + variant.needs)
         d = decide(cand, est, ctx, llm_invalid=invalid)
+        report.inputs["variants"][variant.name] = {"estimate": asdict(est), "llm_invalid": invalid}
         reason = d.hold_reason.value if d.hold_reason else None
         cid = ports.store.record_candidate(cycle, CandidateRecord(
             variant.name, cand, cost, est.p, d.p_star, d.ev, d.ev5, d.decision, reason,
@@ -94,14 +99,8 @@ def _decide_all(symbol: str, cycle: int, cand: Candidate, last_bar: pd.Series, a
                 ports.store.record_execution(cid, fill, d.lot)
 
 
-def _snapshot(symbol: str, close: datetime, m15: pd.DataFrame, trend: str, news: list) -> str:
-    bars = m15.tail(SNAPSHOT_BARS).assign(timestamp=lambda d: d["timestamp"].astype(str))
-    return json.dumps({
-        "symbol": symbol, "candle_close_utc": close.isoformat(), "htf_trend": trend,
-        "bars_m15": bars.to_dict(orient="records"),
-        "news": [{"headline": n.headline, "source": n.source, "published_at": n.published_at.isoformat(),
-                  "fetched_at": n.fetched_at.isoformat()} for n in news],
-    }, default=float)
+def _bars(df: pd.DataFrame) -> list[dict]:
+    return df.assign(timestamp=lambda d: d["timestamp"].astype(str)).to_dict(orient="records")
 
 
 def run_once(symbol: str, candle_close: datetime, ports: Ports, cfg: Settings, code_version: str = "dev") -> CycleReport:
@@ -111,14 +110,18 @@ def run_once(symbol: str, candle_close: datetime, ports: Ports, cfg: Settings, c
     if cycle is None:
         log.info("%s: candela %s già elaborata, salto", symbol, candle_close)
         return CycleReport("skipped")
-    report, snapshot = CycleReport("done"), None
+    report = CycleReport("done")
+    report.inputs.update(symbol=symbol, candle_close_utc=candle_close.isoformat(), config=cfg.public_config())
     try:
         bars = ports.market.closed_bars(symbol, cfg.timeframe, cfg.candles_count)
         htf = ports.market.closed_bars(symbol, cfg.htf_timeframe, HTF_BARS)
+        report.inputs.update(bars_m15=_bars(bars), bars_htf=_bars(htf))  # grezze: il replay rigenera il candidato
         m15, trend = add_indicators(closed_by(bars, M15, candle_close)), htf_trend(htf, candle_close)
         news = visible_news(ports.news.latest(symbol, NEWS_LIMIT), candle_close)
-        snapshot = _snapshot(symbol, candle_close, m15, trend, news)
         account = ports.broker.account()
+        report.inputs.update(htf_trend=trend, account=asdict(account), news=[
+            {"headline": n.headline, "source": n.source, "published_at": n.published_at.isoformat(),
+             "fetched_at": n.fetched_at.isoformat()} for n in news])
         daily_stop = daily_loss_limit_reached(account.day_pnl, account.equity, cfg.daily_loss_limit_pct)
 
         generated = generate(symbol, bars, htf, candle_close)
@@ -139,6 +142,7 @@ def run_once(symbol: str, candle_close: datetime, ports: Ports, cfg: Settings, c
     except Exception as exc:  # il ciclo si chiude come errore in archivio; il demone passa al simbolo successivo
         log.exception("ciclo %s %s fallito", symbol, candle_close)
         report.status, report.error = "error", f"{type(exc).__name__}: {exc}"
+    snapshot = json.dumps(report.inputs, sort_keys=True, default=float)
     ports.store.finish_cycle(cycle, report.status, report.error, snapshot, code_version, cfg.config_hash())
     _log_summary(symbol, report)
     return report
