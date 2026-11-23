@@ -165,3 +165,17 @@ def test_main_rejects_invalid_config_before_touching_mt5(monkeypatch, caplog):
     assert main.main([]) == 1
     messages = " ".join(r.getMessage() for r in caplog.records)
     assert "risk_per_trade_pct" in messages and "99" not in messages  # nomi dei campi, mai i valori
+
+
+def test_cycle_resolves_with_configured_horizon(monkeypatch):
+    # review di fine Fase 3 (R1): HORIZON_BARS era ignorato, la risoluzione usava sempre 96 barre
+    import app.compose as compose
+    from types import SimpleNamespace
+    seen = []
+    monkeypatch.setattr(compose, "run_once", lambda *a, **k: None)
+    monkeypatch.setattr(compose, "resolve_pending", lambda store, market, now, horizon=96: seen.append(horizon))
+    monkeypatch.setattr(compose, "reconcile_broker", lambda *a: 0)
+    cfg = Settings(_env_file=None, symbols="EURUSD", horizon_bars=48)
+    compose.make_cycle(cfg, ports=SimpleNamespace(store=None, market=None, broker=None), code_version="x",
+                       clock=lambda: T0)(T0)
+    assert seen == [48]
