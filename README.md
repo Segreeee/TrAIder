@@ -1,109 +1,106 @@
-# TrAIder — MVP AI Trading Agent (LLM locali Ollama + MT5)
+# TrAIder
 
-Demone headless che usa modelli locali Ollama (due analisti e un giudice)
-come motore decisionale per generare segnali di trading, a partire da dati
-OHLCV live da MetaTrader5 e notizie finanziarie reali (RSS Yahoo Finance).
+Generatore di segnali forex su MetaTrader 5 che usa LLM locali (Ollama) come analisti, costruito per rispondere
+a una domanda misurabile: **gli LLM migliorano la stima della probabilità di successo di un trade rispetto alla
+sola analisi tecnica, dopo i costi?** Il sistema gira in simulazione (`DRY_RUN`) su sei coppie in M15 e registra
+ogni decisione con il suo input completo, così la risposta si ottiene dai dati e non da un'impressione.
 
-## Albero del progetto
+Stato: **raccolta dati in avanti in corso dal 23 novembre 2026**, secondo una
+[preregistrazione](docs/PREREGISTRAZIONE.md) approvata prima di raccogliere i dati. Nessun risultato conclusivo
+ancora: vedi [Risultati](#risultati).
+
+## Come decide
+
+Per ogni simbolo, a ogni chiusura di candela M15 ([diagramma del ciclo](docs/ciclo.html)):
+
+1. **Candidato baseline.** Una regola tecnica fissa (EMA, trend H1, ATR) propone direzione, stop e target.
+   Gli LLM non scelgono mai livelli né lotto.
+2. **Analisti LLM come estrattori di caratteristiche.** Un analista tecnico (solo prezzi e indicatori) e uno
+   macro (solo notizie) rispondono con uno schema chiuso `{direzione, forza, orizzonte, motivazioni}`, validato
+   con pydantic, a temperatura 0. La confidenza dichiarata da un LLM non entra mai nel modello.
+3. **Stima di p per variante.** Sullo stesso candidato si confrontano sei varianti, da `v1-p0` (solo geometria
+   di stop e target) a `v7-completo` (tecnica + entrambi gli analisti). Prima di 100 esiti si usa una Beta
+   centrata su p0, poi una logistica con offset, attivata solo se batte p0 fuori campione.
+4. **Gate e rischio.** Si opera solo se EV_5 (valore atteso al 5° percentile di p, al netto dei costi) è
+   positivo. Poi Kelly frazionato, rischio massimo 1% per trade, esposizione per valuta e limite di perdita
+   giornaliera. Solo la variante di produzione arriva al broker, che è simulato.
+5. **Esito virtuale.** Ogni candidato, eseguito o no, viene risolto sulle barre successive (TP, SL o scadenza
+   dopo 24 h), in R netto e lordo.
+
+## Architettura
+
+Architettura esagonale leggera ([diagramma dei componenti](docs/architettura.html)): dominio puro (`domain/`,
+senza I/O), cinque porte (`ports.py`: dati di mercato, notizie, LLM, broker, archivio) con un adattatore reale e
+uno finto ciascuna, orchestrazione in `app/`, valutazione in `evaluation/`, dashboard statica in `report/`.
+Le decisioni di progetto, con alternative e motivi, sono in [DECISIONS.md](DECISIONS.md) e
+[docs/ALTERNATIVE.md](docs/ALTERNATIVE.md).
+
+Sicurezza operativa, garantita da test:
+
+- **Doppio consenso.** Il broker reale si costruisce solo con `DRY_RUN=false` **e** `ALLOW_LIVE_TRADING=true`;
+  il costruttore del broker MT5 rifiuta comunque di partire senza consenso esplicito. Il default è simulato.
+- **Nessun dato dal futuro.** Solo candele chiuse; le notizie entrano in un ciclo solo se erano già state
+  scaricate prima della chiusura della candela.
+- **Archivio a sola aggiunta.** Trigger SQLite contro modifiche e cancellazioni; ogni ciclo salva un input
+  sufficiente a rifare candidato e decisioni (`app/replay.py`).
+- **Regole di rischio con test a proprietà** (hypothesis): rischio entro il limite, lotto nullo o almeno
+  minimo, mai due posizioni sullo stesso simbolo, esposizione per valuta limitata.
+
+## Valutazione
+
+- **Preregistrazione** ([docs/PREREGISTRAZIONE.md](docs/PREREGISTRAZIONE.md)): metrica primaria Brier skill
+  score e R netto, `v7-completo` contro `v2-tecnica` sugli stessi candidati; bootstrap che ricampiona giorni
+  interi (i candidati dello stesso giorno sono correlati), B = 2000, IC 95%; analisi finale con almeno 300
+  candidati risolti e 30 giorni di mercato. Regole di decisione e limiti fissati prima dei dati.
+- **Backtest** solo per le varianti senza LLM (`python -m evaluation.backtest`), walk-forward, con lo stesso
+  simulatore di esito del demone. Le varianti con LLM si valutano solo in avanti, dopo la data di addestramento
+  del modello.
+- **Revisore giudice** offline e in ombra su un campione del 20%: non decide, misura se un veto avrebbe
+  migliorato il risultato.
+
+## Risultati
+
+Riportati come sono, anche quando sono negativi.
+
+- **Test in avanti:** in corso dal 23 novembre 2026. Nessun numero ancora significativo; la dashboard mostra
+  l'avanzamento verso le soglie preregistrate.
+- **Backtest di `v2-tecnica`** (EURUSD, 3000 barre M15 fino al 23 novembre 2026, 2047 candidati risolti):
+  Brier skill score rispetto a p0 **−0.016**, IC 95% per giorno **[−0.036, 0.004]**; AUC 0.479. Su questo
+  periodo le caratteristiche tecniche non mostrano valore predittivo rispetto alla sola geometria di stop e
+  target. Il gate ha lasciato passare 20 trade, tutti nello stesso giorno, per −18.43 R netti. Un solo simbolo
+  e poco più di un mese: un risultato descrittivo, non conclusivo.
+
+## Uso
+
+Requisiti: Windows con terminale MT5 su conto demo, Ollama in locale (`gemma3:12b`), Python 3.12.
 
 ```
-TrAIder/
-├── main.py                 # Entry point demone headless: loop continuo automatico
-├── dashboard.py             # Entry point GUI (Streamlit): analisi on-demand a bottone
-├── requirements.txt
-├── .env.example             # Template variabili d'ambiente (copiare in .env)
-├── config/
-│   ├── __init__.py
-│   └── settings.py          # Configurazione centralizzata (letta da .env)
-├── core/
-│   ├── __init__.py
-│   ├── data_feed.py         # Data Ingestion mercato: MT5 + RSI/EMA (pandas-ta)
-│   ├── news_feed.py         # Data Ingestion notizie: RSS Yahoo Finance (sostituibile con Finnhub)
-│   ├── prompt_builder.py    # Costruzione system/user prompt
-│   ├── qwen_brain.py        # Chiamata LLM (openai SDK) + parsing/validazione JSON
-│   ├── risk_manager.py      # Calcolo lot size max (rischio 1% capitale)
-│   └── executor.py          # Esecuzione ordine: mock (dry-run) o invio reale a MT5 (solo main.py)
-└── logs/
-    ├── traider.log           # Log rotante generato da main.py
-    └── signals_history.json  # Storico segnali generati dalla dashboard
+python -m venv .venv
+.venv\Scripts\pip install -r requirements-dev.txt
+copy .env.example .env      (poi compilare: resta DRY_RUN=true)
+.venv\Scripts\python main.py --once      # una sola candela
+.venv\Scripts\python main.py             # demone, allineato alle candele M15
+.venv\Scripts\python -m evaluation.report --dal 2026-11-23T16:45:00+00:00
 ```
 
-## Setup
+La dashboard (`DASHBOARD_PATH`) è una pagina HTML statica rigenerata a ogni candela, leggibile offline anche dal
+telefono. Tutta la configurazione viene da variabili d'ambiente; nessun segreto nel codice o nei log.
 
-1. Crea un virtual environment e installa le dipendenze:
-   ```
-   python -m venv .venv
-   .venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-   Nota: `MetaTrader5` richiede Windows con il terminale MT5 installato e
-   loggato (o credenziali valide in `.env`). `pandas-ta` viene usato al posto
-   di TA-Lib per evitare la compilazione di dipendenze C.
+Test e controlli (nessun test usa rete, MT5, Ollama o API a pagamento):
 
-2. Copia `.env.example` in `.env` e compila almeno:
-   - i modelli Ollama (vedi sotto); `QWEN_*` non e' piu' usato dalla pipeline.
-   - eventualmente `MT5_LOGIN` / `MT5_PASSWORD` / `MT5_SERVER` se il terminale
-     non è già loggato manualmente.
-   - Lascia `DRY_RUN=true` per i primi test: l'executor stampera' l'ordine
-     simulato invece di inviarlo a MT5.
-   - Modelli Ollama (default gia' impostati, tutti `gemma3:12b`):
-     `OLLAMA_MODEL_TECHNICAL`, `OLLAMA_MODEL_MACRO` e `OLLAMA_MODEL_JUDGE`.
-     Analista tecnico e macro emettono un verdetto ciascuno, il giudice
-     arbitra (LLM-as-a-judge); se nessun analista risponde il giudice decide
-     da solo. Usare lo stesso modello per tutti i ruoli evita i ricaricamenti
-     (su 15 GB di RAM / 4 GB di VRAM ogni cambio modello costa minuti).
-     Consigliato avviare Ollama con `OLLAMA_KEEP_ALIVE=30m` (o `-1`). Evita
-     i modelli "thinking" (es. `deepseek-r1`) e quelli da 14B+ (`phi4`
-     manda in crash il server per memoria su questa macchina).
+```
+.venv\Scripts\python -m pytest
+.venv\Scripts\python -m coverage run -m pytest && .venv\Scripts\python -m coverage report
+.venv\Scripts\python -m ruff check .
+.venv\Scripts\python -m mypy
+```
 
-3. Avvia il demone headless (loop automatico, esegue/simula ordini):
-   ```
-   python main.py
-   ```
-   Il ciclo (fetch dati -> LLM -> risk check -> esecuzione) gira ogni
-   `LOOP_INTERVAL_SECONDS` (default 900s = 15 minuti, coerente col timeframe M15).
+## Limiti noti
 
-   Oppure avvia la dashboard grafica (analisi manuale a richiesta, nessun ordine automatico):
-   ```
-   streamlit run dashboard.py
-   ```
-   Si apre nel browser su `http://localhost:8501`. Premendo **"Analizza ora"**
-   esegue un singolo ciclo (dati MT5 -> indicatori -> analisti + giudice -> risk check) e
-   mostra il segnale con grafico a candele, RSI, motivazione del modello e
-   storico delle analisi. La dashboard è puramente informativa: non invia mai
-   ordini al conto, nemmeno in modalità live — l'eventuale esecuzione resta
-   una decisione manuale dell'utente.
-
-## Note di design
-
-- **Risk management indipendente dall'LLM**: il `lot_size` proposto dall'LLM
-  viene sempre validato/ricalcolato da `RiskManager.cap_llm_lot_size`, che
-  applica il vincolo "rischio massimo 1% del capitale" in base alla distanza
-  entry/stop-loss. L'LLM non ha mai l'ultima parola sul sizing.
-- **Gestione errori**: timeout, errori HTTP e JSON malformati dal modello
-  sollevano `QwenBrainError` e vengono loggati senza fermare il demone
-  (il ciclo successivo riparte regolarmente).
-- **Sostituibilità**: `YahooNewsFeed` implementa l'interfaccia astratta
-  `NewsFeed.get_latest_news(symbol, limit)` — una futura `FinnhubNewsFeed`
-  può sostituirla senza toccare `main.py` o `prompt_builder.py`.
-- **Nessuna UI**: tutto l'output è su stdout + file di log rotante
-  (`logs/traider.log`), adatto per essere eseguito come servizio/task
-  schedulato.
-
-## Sicurezza operativa (correzioni di novembre 2026)
-
-- **Notizie**: `NEWS_PROVIDER=none` di default. Senza notizie reali l'analista
-  macro non partecipa e il giudice lo sa. Le notizie `mock` sono consentite solo
-  con `DRY_RUN=true`: il demone si rifiuta di partire con notizie finte e ordini reali.
-- **Candele chiuse**: in live si analizzano solo candele chiuse, come nel backtest.
-- **Rischio**: il lotto si calcola sul capitale reale del conto. Se anche 0,01 lotti
-  supererebbero il rischio massimo, il trade non si fa. Una sola posizione per
-  simbolo, al massimo `MAX_OPEN_POSITIONS` aperte, esposizione netta per valuta
-  limitata da `MAX_CURRENCY_EXPOSURE` (EURUSD e GBPUSD long insieme = USD -2),
-  stop a `DAILY_LOSS_LIMIT_PCT` di perdita nel giorno. Prima di inviare l'ordine il
-  R:R viene ricontrollato al prezzo ask/bid reale.
-- **Costi**: backtest e tracciamento degli esiti sottraggono `COST_PIPS` (spread +
-  commissioni + slippage, andata e ritorno) a ogni operazione; il riepilogo mostra
-  R netto e R lordo.
-
-Test: `python -m unittest discover tests` (nessuna dipendenza da MT5, Ollama o rete).
+- Simulatore: ingresso alla chiusura della candela con lo spread della barra, SL prioritario se TP e SL cadono
+  nella stessa barra, nessuno slippage in uscita. Lo scarto rispetto ai fill reali si misura solo con ordini
+  sul conto demo, che il progetto non invia senza una conferma esplicita.
+- Notizie Finnhub generali sul forex (non per coppia), con una candela di ritardo; uso privato.
+- Un solo modello locale per entrambi gli analisti (4 GB di VRAM).
+- La potenza statistica è bassa: il risultato più probabile della preregistrazione è "non concludente", e
+  verrà riportato così.
