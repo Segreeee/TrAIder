@@ -1,12 +1,16 @@
 """
-Data Ingestion (Notizie) - modulo mock-up.
+Data Ingestion (Notizie).
 
-Espone la stessa interfaccia che avra' in futuro l'integrazione reale
-(es. Finnhub News API), cosi' da poter sostituire `MockNewsFeed` con
-`FinnhubNewsFeed` senza toccare il resto della pipeline.
+`NewsFeed` e' l'interfaccia; `YahooNewsFeed` e' l'implementazione reale (RSS
+pubblico). Una sorgente diversa (es. Finnhub) si aggiunge implementando
+`get_latest_news` senza toccare il resto della pipeline.
 """
 import logging
+import re
+import urllib.request
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from typing import List, TypedDict
 
 logger = logging.getLogger(__name__)
@@ -24,6 +28,36 @@ class NewsFeed:
 
     def get_latest_news(self, symbol: str, limit: int = 3) -> List[NewsItem]:
         raise NotImplementedError
+
+
+class NullNewsFeed(NewsFeed):
+    """Nessuna fonte di notizie: restituisce sempre una lista vuota (default sicuro)."""
+
+    def get_latest_news(self, symbol: str, limit: int = 3) -> List[NewsItem]:
+        return []
+
+
+def build_news_feed(provider: str, dry_run: bool) -> NewsFeed:
+    """
+    Sceglie la sorgente di notizie da NEWS_PROVIDER.
+
+    - "none" (default): nessuna notizia. L'analista macro viene escluso.
+    - "mock": notizie statiche inventate, SOLO in DRY_RUN. Con ordini reali
+      sono vietate: sono sempre le stesse e sempre a favore dell'euro, quindi
+      spingerebbero il modello verso operazioni senza alcun fondamento.
+    """
+    name = (provider or "none").strip().lower()
+    if name == "none":
+        return NullNewsFeed()
+    if name == "mock":
+        if not dry_run:
+            raise ValueError(
+                "NEWS_PROVIDER=mock non e' consentito con DRY_RUN=false: le notizie finte "
+                "non possono guidare ordini reali."
+            )
+        logger.warning("Notizie MOCK attive: solo per prove in DRY_RUN.")
+        return MockNewsFeed()
+    raise ValueError(f"NEWS_PROVIDER sconosciuto: {provider!r} (valori ammessi: none, mock)")
 
 
 class MockNewsFeed(NewsFeed):
@@ -66,3 +100,44 @@ class MockNewsFeed(NewsFeed):
         ]
         logger.debug("MockNewsFeed: restituite %d notizie per %s", limit, symbol)
         return mock_pool[:limit]
+
+
+class YahooNewsFeed(NewsFeed):
+    """
+    Notizie reali dal feed RSS pubblico di Yahoo Finance per il simbolo (nessuna
+    chiave API). Se il feed non risponde restituisce una lista vuota: mai notizie
+    inventate, il prompt mostrera' "Nessuna notizia rilevante disponibile".
+    """
+
+    URL = "https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
+
+    @staticmethod
+    def _ticker(symbol: str) -> str:
+        # Yahoo quota le coppie USDxxx come "xxx=X" (USDJPY -> JPY=X), le altre come "EURUSD=X".
+        return f"{symbol[3:]}=X" if symbol.startswith("USD") else f"{symbol}=X"
+
+    def get_latest_news(self, symbol: str, limit: int = 3) -> List[NewsItem]:
+        try:
+            req = urllib.request.Request(
+                self.URL.format(ticker=self._ticker(symbol)), headers={"User-Agent": "Mozilla/5.0"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                root = ET.fromstring(resp.read())
+        except (OSError, ET.ParseError) as exc:
+            logger.warning("Notizie non disponibili per %s: %s", symbol, exc)
+            return []
+
+        items: List[NewsItem] = []
+        for node in root.iter("item"):
+            try:
+                published = parsedate_to_datetime(node.findtext("pubDate", "")).astimezone(timezone.utc).isoformat()
+            except (TypeError, ValueError):
+                published = ""
+            items.append({
+                "headline": (node.findtext("title") or "").strip(),
+                "source": (node.findtext("source") or "Yahoo Finance").strip(),
+                "published_at": published,
+                "summary": re.sub(r"<[^>]+>", "", node.findtext("description") or "").strip(),
+            })
+        items.sort(key=lambda n: n["published_at"], reverse=True)
+        return items[:limit]

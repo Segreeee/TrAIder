@@ -1,0 +1,120 @@
+"""P6.02: rendering HTML statico della dashboard (D-009). Offline, una colonna per il telefono, ogni numero del
+view-model visibile. Lo snapshot si rigenera solo con TRAIDER_UPDATE_SNAPSHOT=1, poi si rivede il diff."""
+import os
+import re
+from datetime import datetime, timezone
+from pathlib import Path
+
+from adapters.sqlite_store import SqliteStore
+from report.dashboard import render
+from report.viewmodel import load_archive, viewmodel
+from tests.report.test_viewmodel import db  # noqa: F401 (fixture)
+
+SNAPSHOT = Path(__file__).parent / "snapshots" / "dashboard.html"
+NOW = datetime(2026, 12, 1, 13, 5, tzinfo=timezone.utc)
+
+
+def _html(path):
+    return render(viewmodel(load_archive(path), production_variant="v7-completo"), generated_at=NOW)
+
+
+def test_snapshot_matches(db):  # noqa: F811
+    html = _html(db)
+    if os.environ.get("TRAIDER_UPDATE_SNAPSHOT") == "1":
+        SNAPSHOT.write_text(html, encoding="utf-8")
+    assert html == SNAPSHOT.read_text(encoding="utf-8")
+
+
+def test_every_viewmodel_number_rendered(db):  # noqa: F811
+    vm = viewmodel(load_archive(db), production_variant="v7-completo")
+    html = _html(db)
+    for s in vm["signals"]:
+        assert f"{s['p']:.2f}" in html and f"{s['p_star']:.2f}" in html and s["symbol"] in html
+    assert f"{vm['curve'][-1]['net']:+.2f}" in html and f"{vm['curve'][-1]['gross']:+.2f}" in html
+    for k in ("cycles_done", "cycles_error", "resolved", "pending"):
+        assert f">{vm['coverage'][k]}<" in html
+    assert "EUR +1" in html and "USD −1" in html
+    assert f"{vm['progress']['n']} su {vm['progress']['n_target']}" in html
+    assert f"{vm['progress']['days']} su {vm['progress']['days_target']}" in html
+    for v in vm["variants"]:
+        if v["available"]:
+            assert v["name"] in html
+    assert "non concludente" in html.lower()
+
+
+def test_no_external_urls(db):  # noqa: F811
+    html = _html(db)
+    assert not re.search(r"(https?:)?//[\w.-]+\.\w", html)  # niente CDN, font o script esterni: funziona offline
+    assert "<script src" not in html and "<link" not in html
+
+
+def test_viewport_meta_present(db):  # noqa: F811
+    assert '<meta name="viewport" content="width=device-width, initial-scale=1">' in _html(db)
+
+
+def test_text_from_archive_is_escaped(tmp_path):
+    from tests.report.test_viewmodel import _cycle
+    path = tmp_path / "x.db"
+    store = SqliteStore(str(path))
+    _cycle(store, "<img src=x onerror=alert(1)>", NOW, "HOLD")  # l'archivio è a sola aggiunta: si scrive così
+    store.close()
+    html = _html(path)
+    assert "<img src=x" not in html and "&lt;img" in html
+
+
+def test_stale_daemon_is_flagged(db):  # noqa: F811
+    vm = viewmodel(load_archive(db), production_variant="v7-completo")
+    fresh = render(vm, generated_at=datetime.fromisoformat(vm["last_cycle"]))
+    stale = render(vm, generated_at=datetime(2026, 12, 2, 13, 0, tzinfo=timezone.utc))
+    assert "nessun ciclo da" not in fresh and "nessun ciclo da" in stale
+
+
+def test_write_dashboard_creates_page_and_folder(db, tmp_path):  # noqa: F811
+    from report.dashboard import write_dashboard
+    out = tmp_path / "sincronizzata" / "dashboard.html"
+    write_dashboard(db, out, "v7-completo", NOW)
+    assert out.read_text(encoding="utf-8").startswith("<!doctype html>")
+
+
+def test_atomic_write_no_partial_file(db, tmp_path, monkeypatch):  # noqa: F811
+    import report.dashboard as dash
+    out = tmp_path / "dashboard.html"
+    out.write_text("pagina precedente", encoding="utf-8")
+
+    def broken(*a, **k):
+        raise RuntimeError("rendering fallito a metà")
+
+    monkeypatch.setattr(dash, "render", broken)
+    try:
+        dash.write_dashboard(db, out, "v7-completo", NOW)
+    except RuntimeError:
+        pass
+    assert out.read_text(encoding="utf-8") == "pagina precedente"  # il telefono non vede mai una pagina a metà
+    assert not [p.name for p in tmp_path.iterdir() if p.name.endswith(".tmp")]  # nessun file temporaneo lasciato
+
+
+def test_trade_levels_rendered_with_symbol_precision(db):  # noqa: F811
+    html = _html(db)
+    assert "ingresso 1.10000" in html and "stop 1.09800" in html and "target 1.10300" in html
+    assert "0.10 lotti" in html
+    assert "capitale simulato" in html  # il lotto non è calcolato sul saldo del conto demo
+
+
+def test_labels_follow_what_is_measured(db):  # noqa: F811
+    # review P7.01: l'esito e l'avanzamento riguardano sempre v7 contro v2, la calibrazione la variante di produzione
+    html = render(viewmodel(load_archive(db), production_variant="v2-tecnica"), generated_at=NOW)
+    assert "(v7-completo)" in html and "di v2-tecnica" in html
+
+
+def test_positions_use_symbol_decimals(db):  # noqa: F811
+    assert '<td class="num">1.10000</td>' in _html(db)  # come nei segnali: 5 decimali, 3 per le coppie JPY
+
+
+def test_weekend_is_not_a_stopped_daemon(db):  # noqa: F811
+    # review P7.01: dal venerdì sera alla domenica sera il demone salta le candele senza archiviarle
+    vm = viewmodel(load_archive(db), production_variant="v7-completo")
+    saturday = datetime(2026, 12, 5, 12, 0, tzinfo=timezone.utc)
+    html = render({**vm, "last_cycle": "2026-12-04T21:45:00+00:00"}, generated_at=saturday)
+    assert "nessun ciclo da" not in html and "Mercato chiuso" in html
+    tuesday = datetime(2026, 12, 8, 12, 0, tzinfo=timezone.utc)
+    assert "nessun ciclo da" in render({**vm, "last_cycle": "2026-12-08T09:00:00+00:00"}, generated_at=tuesday)

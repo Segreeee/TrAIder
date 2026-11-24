@@ -1,0 +1,7 @@
+[run]
+source = domain, evaluation, report
+
+[report]
+fail_under = 85
+show_missing = true
+
